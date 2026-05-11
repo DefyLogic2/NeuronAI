@@ -1,0 +1,2277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NEURON  — Multi-Model Branching Reasoning</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oxanium:wght@300;400;600;700&family=IBM+Plex+Mono:wght@300;400;500&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#050508;--bg2:#0a0a14;--node-bg:rgba(13,13,28,0.92);
+  --node-border:rgba(0,245,255,0.22);--accent:#00f5ff;--accent2:#a855f7;
+  --text:#e0e8ff;--dim:rgba(224,232,255,0.48);--glow:rgba(0,245,255,0.14);
+  --grid:rgba(0,245,255,0.035);--warn:#ffb800;--ok:#00ff9d;--danger:#ff4a6e;
+  --node-w:300px;--node-radius:0px;--font-main:'IBM Plex Mono',monospace;
+  --font-title:'Oxanium',sans-serif;--conn-style:curve;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font-main);background:var(--bg);color:var(--text);min-height:100vh;overflow-x:auto;transition:background .4s,color .4s}
+.bg-glow{position:fixed;inset:0;pointer-events:none;z-index:0}
+.bg-grid{position:fixed;inset:0;pointer-events:none;z-index:0;background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);background-size:44px 44px}
+
+header{position:fixed;top:0;left:0;right:0;height:58px;display:flex;align-items:center;justify-content:space-between;padding:0 20px;background:rgba(5,5,8,.92);backdrop-filter:blur(20px);border-bottom:1px solid rgba(255,255,255,.06);z-index:100}
+.logo-wrap{display:flex;align-items:baseline;gap:10px}
+.logo{font-family:var(--font-title);font-weight:700;font-size:20px;letter-spacing:6px;color:var(--accent);text-shadow:0 0 28px currentColor}
+.logo-ver{font-size:10px;letter-spacing:2px;color:var(--accent2);opacity:.7;font-family:var(--font-main)}
+.logo-sub{font-size:8px;letter-spacing:3px;color:var(--dim);font-weight:300;margin-top:1px}
+.hdr-center{display:flex;align-items:center;gap:6px}
+.hdr-r{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.provider-chip{display:flex;align-items:center;gap:6px;padding:4px 10px;border:1px solid var(--node-border);background:rgba(0,245,255,.04);font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--dim)}
+.provider-dot{width:6px;height:6px;border-radius:50%;background:var(--ok);box-shadow:0 0 6px var(--ok);flex-shrink:0}
+.provider-dot.off{background:var(--danger);box-shadow:0 0 6px var(--danger)}
+
+.btn{font-family:var(--font-main);font-size:9.5px;letter-spacing:1.5px;padding:6px 13px;text-transform:uppercase;border:1px solid rgba(255,255,255,.15);background:transparent;color:var(--dim);cursor:pointer;transition:all .18s;white-space:nowrap}
+.btn:hover{border-color:var(--accent);color:var(--accent);background:rgba(0,245,255,.04)}
+.btn:disabled{opacity:.3;pointer-events:none}
+.btn-a{background:var(--accent);color:#000!important;border-color:var(--accent);font-weight:500}
+.btn-a:hover{background:transparent;color:var(--accent)!important}
+.btn-v{border-color:rgba(168,85,247,.5);color:var(--accent2)}
+.btn-v:hover{border-color:var(--accent2);background:rgba(168,85,247,.05)}
+.btn-ok{border-color:rgba(0,255,157,.4);color:var(--ok)}
+.btn-ok:hover{border-color:var(--ok);background:rgba(0,255,157,.05)}
+.btn-warn{border-color:rgba(255,184,0,.4);color:var(--warn)}
+.btn-icon{padding:6px 9px;font-size:12px}
+.btn-debug{border-color:rgba(255,184,0,.3);color:rgba(255,184,0,.7)}
+.btn-debug:hover{border-color:var(--warn);color:var(--warn);background:rgba(255,184,0,.04)}
+.btn-debug.has-error{border-color:var(--danger);color:var(--danger);animation:err-pulse 1.5s ease infinite}
+@keyframes err-pulse{0%,100%{box-shadow:none}50%{box-shadow:0 0 8px rgba(255,74,110,.4)}}
+
+main{display:flex;flex-direction:column;min-height:100vh;padding-top:58px;position:relative;z-index:1}
+
+.toolbar{display:flex;align-items:center;gap:8px;padding:10px 20px;background:rgba(0,0,0,.2);border-bottom:1px solid rgba(255,255,255,.04);flex-wrap:wrap}
+.tb-group{display:flex;align-items:center;gap:6px}
+.tb-sep{width:1px;height:22px;background:rgba(255,255,255,.08)}
+.tb-label{font-size:8.5px;letter-spacing:2px;text-transform:uppercase;color:var(--dim);flex-shrink:0}
+.sel{font-family:var(--font-main);font-size:10px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.12);color:var(--text);padding:5px 8px;outline:none;cursor:pointer;letter-spacing:.5px;transition:border-color .2s}
+.sel:focus{border-color:var(--accent)}
+.sel option{background:#0a0a14}
+.slider-wrap{display:flex;align-items:center;gap:7px}
+input[type=range]{-webkit-appearance:none;width:90px;height:2px;background:rgba(255,255,255,.12);outline:none;cursor:pointer}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:12px;height:12px;background:var(--accent);border-radius:50%;box-shadow:0 0 8px var(--accent)}
+.slider-val{font-size:9px;color:var(--accent);min-width:24px;text-align:right}
+.tb-spacer{flex:1}
+
+.input-zone{padding:18px 20px 14px;border-bottom:1px solid rgba(255,255,255,.05);background:rgba(0,0,0,.15)}
+.zone-lbl{font-size:8.5px;letter-spacing:3px;text-transform:uppercase;color:var(--dim);margin-bottom:8px;display:flex;align-items:center;gap:8px}
+.inp-row{display:flex;gap:8px}
+.q-inp{flex:1;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-bottom-color:var(--accent);color:var(--text);font-family:var(--font-main);font-size:13px;padding:10px 14px;outline:none;transition:border-color .2s,box-shadow .2s}
+.q-inp:focus{border-color:var(--accent);box-shadow:inset 0 0 20px rgba(0,245,255,.02)}
+.q-inp::placeholder{color:rgba(255,255,255,.18)}
+.mode-pills{display:flex;gap:4px;flex-wrap:wrap}
+.pill{font-size:8.5px;padding:4px 10px;border:1px solid rgba(255,255,255,.1);background:transparent;color:var(--dim);cursor:pointer;transition:all .15s;letter-spacing:1px;text-transform:uppercase}
+.pill.active{border-color:var(--accent);color:var(--accent);background:rgba(0,245,255,.07)}
+
+#graph-wrap{flex:1;overflow:auto;padding:28px;position:relative;min-height:420px}
+#graph-root{position:relative;min-width:600px;min-height:380px}
+#conn-svg{position:absolute;top:0;left:0;pointer-events:none;z-index:1;overflow:visible}
+
+#minimap{position:fixed;bottom:20px;right:20px;width:160px;height:100px;background:rgba(5,5,8,.9);border:1px solid rgba(0,245,255,.15);z-index:90;overflow:hidden}
+#minimap canvas{position:absolute;top:0;left:0;width:100%;height:100%}
+.mm-label{position:absolute;bottom:4px;left:6px;font-size:7px;letter-spacing:2px;color:var(--dim);text-transform:uppercase}
+.mm-close{position:absolute;top:3px;right:5px;font-size:9px;color:var(--dim);cursor:pointer;background:none;border:none;font-family:inherit}
+
+.empty{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center}
+.e-icon{font-size:52px;opacity:.1;margin-bottom:12px}
+.e-title{font-family:var(--font-title);font-size:13px;letter-spacing:4px;text-transform:uppercase;opacity:.25}
+.e-hint{font-size:9.5px;letter-spacing:1px;opacity:.15;margin-top:5px}
+.e-examples{margin-top:22px;display:flex;flex-direction:column;gap:6px;max-width:380px;opacity:.35}
+.e-ex{font-size:10px;padding:7px 12px;border:1px solid rgba(255,255,255,.08);cursor:pointer;text-align:left;transition:all .15s;color:var(--dim)}
+.e-ex:hover{border-color:var(--accent);color:var(--accent);opacity:1}
+
+.node{position:absolute;width:var(--node-w);background:var(--node-bg);border:1px solid var(--node-border);border-radius:var(--node-radius);backdrop-filter:blur(14px);transition:box-shadow .2s,transform .15s;animation:fade-up .3s ease forwards;z-index:2}
+@keyframes fade-up{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.node:hover{box-shadow:0 0 30px var(--glow),0 0 0 1px rgba(255,255,255,.07);z-index:10}
+.node-q{border-color:var(--accent);box-shadow:0 0 20px rgba(0,245,255,.1)}
+.node.collapsed .nbody,.node.collapsed .nfoot{display:none}
+.nhead{padding:8px 11px;display:flex;align-items:center;gap:7px;border-bottom:1px solid var(--node-border);cursor:pointer;user-select:none}
+.nbadge{font-size:7.5px;letter-spacing:2px;text-transform:uppercase;padding:2px 5px;border:1px solid currentColor;flex-shrink:0}
+.ntitle{font-family:var(--font-title);font-size:11px;font-weight:600;letter-spacing:.3px;line-height:1.3;flex:1}
+.nconf{font-size:8px;color:var(--dim);flex-shrink:0;letter-spacing:.5px}
+.nbody{padding:9px 11px;font-size:10.5px;line-height:1.7;color:var(--text);opacity:.72}
+.nbody.editing{display:block!important}
+.nbody textarea{width:100%;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.12);color:var(--text);font-family:var(--font-main);font-size:10.5px;line-height:1.7;padding:6px 8px;outline:none;resize:vertical;min-height:70px;transition:border-color .2s}
+.nbody textarea:focus{border-color:var(--accent2)}
+.conf-bar{height:2px;margin:6px 11px 0;background:rgba(255,255,255,.06)}
+.conf-fill{height:100%;transition:width .4s ease}
+.nfoot{padding:5px 11px 8px;display:flex;gap:5px;flex-wrap:wrap;border-top:1px solid var(--node-border)}
+.nbtn{font-family:var(--font-main);font-size:8px;padding:3px 8px;text-transform:uppercase;letter-spacing:.5px;border:1px solid rgba(128,128,128,.2);background:transparent;color:var(--dim);cursor:pointer;transition:all .15s}
+.nbtn:hover{border-color:var(--accent2);color:var(--accent2)}
+.nbtn.red:hover{border-color:var(--danger);color:var(--danger)}
+.nbtn.green:hover{border-color:var(--ok);color:var(--ok)}
+.node-load{position:absolute;width:var(--node-w);background:var(--node-bg);border:1px solid rgba(255,255,255,.08);border-radius:var(--node-radius);padding:18px 12px;text-align:center;z-index:2;animation:fade-up .3s ease forwards}
+.load-lbl{font-size:8.5px;letter-spacing:3px;color:var(--dim);margin-bottom:10px;text-transform:uppercase}
+.load-model{font-size:8px;color:var(--dim);opacity:.5;margin-bottom:8px;letter-spacing:1px}
+.dots{display:inline-flex;gap:5px}
+.dots span{width:5px;height:5px;background:var(--accent);border-radius:50%;animation:pulse 1.1s infinite}
+.dots span:nth-child(2){animation-delay:.18s}
+.dots span:nth-child(3){animation-delay:.36s}
+@keyframes pulse{0%,100%{opacity:.2;transform:scale(.7)}50%{opacity:1;transform:scale(1)}}
+.chain-lbl{position:absolute;z-index:3;font-size:8px;letter-spacing:2px;text-transform:uppercase;color:var(--accent2);opacity:.6;pointer-events:none;font-family:'Space Mono',monospace}
+.chain-collapse-btn{position:absolute;z-index:4;font-size:9px;cursor:pointer;background:rgba(168,85,247,.15);border:1px solid rgba(168,85,247,.25);color:var(--accent2);padding:2px 6px;letter-spacing:1px;text-transform:uppercase;font-family:var(--font-main);transition:all .15s}
+.chain-collapse-btn:hover{background:rgba(168,85,247,.25)}
+.step-num{font-size:8px;color:var(--text);opacity:.35;flex-shrink:0;width:16px;font-family:'Space Mono',monospace}
+
+.node-note{position:absolute;right:-6px;top:-6px;width:16px;height:16px;background:var(--accent2);border-radius:50%;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:8px;color:#fff;font-weight:700;z-index:5;transition:transform .15s}
+.node-note:hover{transform:scale(1.2)}
+.note-popup{position:absolute;right:0;top:24px;width:200px;background:var(--bg2);border:1px solid rgba(168,85,247,.4);padding:8px;z-index:20;animation:fade-up .15s ease}
+.note-popup textarea{width:100%;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.12);color:var(--text);font-family:var(--font-main);font-size:9.5px;padding:5px 7px;outline:none;resize:vertical;min-height:52px;transition:border-color .2s}
+.note-popup textarea:focus{border-color:var(--accent2)}
+.note-popup-btns{display:flex;gap:4px;margin-top:5px}
+
+.star-row{display:flex;gap:2px;align-items:center;margin-top:4px}
+.star{font-size:12px;cursor:pointer;color:rgba(255,255,255,.15);transition:color .1s;user-select:none}
+.star.active{color:var(--warn)}
+.star:hover{color:var(--warn)}
+
+.bookmark-btn{position:absolute;left:-6px;top:-6px;width:16px;height:16px;background:rgba(0,0,0,.5);border:1px solid rgba(255,255,255,.15);border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:9px;color:var(--dim);z-index:5;transition:all .15s}
+.bookmark-btn.on{color:var(--warn);border-color:var(--warn);background:rgba(255,184,0,.15)}
+
+.tag-row{display:flex;gap:3px;flex-wrap:wrap;padding:3px 11px 0}
+.tag{font-size:7.5px;letter-spacing:1px;text-transform:uppercase;padding:2px 6px;background:rgba(168,85,247,.12);border:1px solid rgba(168,85,247,.25);color:var(--accent2);cursor:default;display:flex;align-items:center;gap:3px}
+.tag-del{cursor:pointer;opacity:.5;font-size:9px}
+.tag-del:hover{opacity:1;color:var(--danger)}
+
+.status-bar{padding:5px 20px;display:flex;align-items:center;gap:12px;background:rgba(0,0,0,.2);border-bottom:1px solid rgba(255,255,255,.03);font-size:9px;letter-spacing:1px;color:var(--dim)}
+.st-dot{width:5px;height:5px;border-radius:50%;background:var(--ok);flex-shrink:0}
+.st-spacer{flex:1}
+.chain-count{background:rgba(0,245,255,.1);color:var(--accent);font-size:8.5px;padding:2px 7px;letter-spacing:1.5px;text-transform:uppercase}
+
+.hist-sidebar{position:fixed;top:58px;left:0;bottom:0;width:240px;background:rgba(5,5,8,.96);border-right:1px solid rgba(255,255,255,.06);z-index:80;overflow-y:auto;padding:14px;transform:translateX(-100%);transition:transform .3s cubic-bezier(.16,1,.3,1)}
+.hist-sidebar.open{transform:translateX(0)}
+.hist-title{font-size:9px;letter-spacing:3px;text-transform:uppercase;color:var(--accent);margin-bottom:12px;display:flex;justify-content:space-between;align-items:center}
+.hist-item{padding:8px 10px;border:1px solid rgba(255,255,255,.06);margin-bottom:6px;cursor:pointer;transition:all .15s;font-size:9.5px;color:var(--dim);line-height:1.5}
+.hist-item:hover{border-color:var(--accent);color:var(--accent)}
+.hist-item-meta{font-size:8px;opacity:.5;margin-top:3px;letter-spacing:.5px}
+.hist-empty{font-size:9px;color:var(--dim);opacity:.4;text-align:center;margin-top:30px;letter-spacing:1px}
+
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.82);backdrop-filter:blur(8px);z-index:200;display:flex;align-items:center;justify-content:center;animation:fin .15s}
+@keyframes fin{from{opacity:0}to{opacity:1}}
+.modal-box{background:var(--bg2);border:1px solid rgba(168,85,247,.35);width:500px;max-width:92vw;padding:24px;box-shadow:0 0 60px rgba(168,85,247,.1);animation:sup .2s ease;max-height:90vh;overflow-y:auto}
+@keyframes sup{from{transform:translateY(12px);opacity:0}to{transform:translateY(0);opacity:1}}
+.modal-t{font-family:var(--font-title);font-size:12px;letter-spacing:3px;text-transform:uppercase;color:var(--accent2);margin-bottom:5px}
+.modal-d{font-size:10px;color:var(--dim);line-height:1.6;margin-bottom:13px}
+.modal-ctx{background:rgba(168,85,247,.07);border-left:2px solid rgba(168,85,247,.4);padding:8px 12px;margin-bottom:12px;font-size:10px;color:var(--dim);font-style:italic;line-height:1.5}
+.modal-inp{width:100%;background:rgba(255,255,255,.04);border:1px solid rgba(168,85,247,.3);color:var(--text);font-family:var(--font-main);font-size:11px;padding:10px 12px;outline:none;resize:vertical;min-height:72px;margin-bottom:12px;transition:border-color .2s}
+.modal-inp:focus{border-color:var(--accent2)}
+.modal-acts{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+.modal-section{margin-bottom:16px}
+.modal-section-t{font-size:8.5px;letter-spacing:2.5px;text-transform:uppercase;color:var(--dim);margin-bottom:8px}
+.provider-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.prov-card{border:1px solid rgba(255,255,255,.1);padding:10px;cursor:pointer;transition:all .15s;background:rgba(255,255,255,.02)}
+.prov-card:hover{border-color:var(--accent);background:rgba(0,245,255,.03)}
+.prov-card.active{border-color:var(--accent);background:rgba(0,245,255,.06);box-shadow:0 0 12px rgba(0,245,255,.08)}
+.prov-name{font-family:var(--font-title);font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;margin-bottom:3px}
+.prov-models{font-size:8.5px;color:var(--dim);line-height:1.5}
+.key-field{width:100%;background:rgba(255,255,255,.04);border:1px solid rgba(0,245,255,.2);color:var(--text);font-family:var(--font-main);font-size:11px;padding:9px 12px;outline:none;margin-bottom:8px;transition:border-color .2s;letter-spacing:.5px}
+.key-field:focus{border-color:var(--accent)}
+.key-status{font-size:9px;letter-spacing:1px;margin-bottom:6px}
+.key-status.set{color:var(--ok)}
+.key-status.unset{color:var(--dim)}
+
+.summary-panel{position:fixed;top:58px;right:0;bottom:0;width:320px;background:var(--bg2);border-left:1px solid rgba(255,255,255,.07);z-index:80;overflow-y:auto;padding:18px;transform:translateX(100%);transition:transform .3s cubic-bezier(.16,1,.3,1)}
+.summary-panel.open{transform:translateX(0)}
+.sp-title{font-family:var(--font-title);font-size:10px;letter-spacing:3px;text-transform:uppercase;color:var(--accent);margin-bottom:12px}
+.sp-stat{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.04);font-size:10px}
+.sp-stat-key{color:var(--dim)}
+.sp-stat-val{color:var(--text)}
+.sp-section{margin-top:14px;margin-bottom:8px;font-size:8px;letter-spacing:2px;text-transform:uppercase;color:var(--accent2)}
+.conf-hist{display:flex;align-items:flex-end;gap:2px;height:40px;margin-top:8px}
+.conf-bar-hist{flex:1;background:var(--accent);opacity:.5;transition:height .4s ease;min-width:6px;border-radius:1px 1px 0 0}
+.insight-chip{padding:5px 9px;border:1px solid rgba(0,245,255,.15);margin-bottom:4px;font-size:9px;color:var(--dim);line-height:1.5;cursor:pointer;transition:all .15s}
+.insight-chip:hover{border-color:var(--accent);color:var(--text)}
+.bookmark-list{margin-top:6px}
+.bm-item{padding:6px 8px;border:1px solid rgba(255,184,0,.15);margin-bottom:4px;font-size:9px;color:var(--dim);cursor:pointer;transition:all .15s}
+.bm-item:hover{border-color:var(--warn);color:var(--warn)}
+
+.theme-panel{position:fixed;top:58px;right:0;bottom:0;width:320px;background:var(--bg2);border-left:1px solid rgba(255,255,255,.07);z-index:150;overflow-y:auto;padding:20px;transform:translateX(100%);transition:transform .3s cubic-bezier(.16,1,.3,1)}
+.theme-panel.open{transform:translateX(0)}
+.tp-title{font-family:var(--font-title);font-size:10px;letter-spacing:3px;text-transform:uppercase;color:var(--accent);margin-bottom:16px}
+.preset-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:18px}
+.pcard{border:1px solid rgba(255,255,255,.08);padding:7px;cursor:pointer;transition:all .15s}
+.pcard:hover,.pcard.active{border-color:var(--accent);box-shadow:0 0 10px rgba(0,245,255,.1)}
+.pprev{height:32px;margin-bottom:5px;border-radius:1px}
+.pname{font-size:8.5px;letter-spacing:1.5px;text-transform:uppercase;color:var(--dim)}
+.sep{border:none;border-top:1px solid rgba(255,255,255,.06);margin:14px 0}
+.cust-t{font-size:8.5px;letter-spacing:2.5px;text-transform:uppercase;color:var(--dim);margin-bottom:12px}
+.clr-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.clr-lbl{font-size:10px;color:var(--dim)}
+.clr-r{display:flex;align-items:center;gap:6px}
+.clr-r input[type=color]{width:26px;height:18px;border:1px solid rgba(255,255,255,.12);background:transparent;cursor:pointer;padding:0}
+.clr-hex{font-size:9px;color:var(--dim);width:50px}
+.font-opt{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.font-pill{font-size:9px;padding:4px 9px;border:1px solid rgba(255,255,255,.12);color:var(--dim);cursor:pointer;transition:all .15s}
+.font-pill.active{border-color:var(--accent);color:var(--accent)}
+.node-shape-opt{display:flex;gap:6px;margin-bottom:10px}
+.shape-btn{font-size:8px;padding:5px 10px;border:1px solid rgba(255,255,255,.12);color:var(--dim);cursor:pointer;transition:all .15s;letter-spacing:1px;text-transform:uppercase}
+.shape-btn.active{border-color:var(--accent);color:var(--accent)}
+.conn-opt{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap}
+
+.export-box{background:var(--bg2);border:1px solid rgba(0,245,255,.25);width:540px;max-width:92vw;padding:22px;animation:sup .2s ease}
+.export-pre{background:rgba(0,0,0,.4);border:1px solid rgba(255,255,255,.08);padding:12px;font-size:9.5px;line-height:1.6;color:var(--dim);max-height:280px;overflow-y:auto;white-space:pre-wrap;word-break:break-all;margin-bottom:12px;font-family:var(--font-main)}
+.export-tabs{display:flex;gap:6px;margin-bottom:12px}
+.export-tab{font-size:8.5px;padding:4px 10px;border:1px solid rgba(255,255,255,.1);cursor:pointer;color:var(--dim);letter-spacing:1px;text-transform:uppercase;transition:all .15s}
+.export-tab.active{border-color:var(--accent);color:var(--accent)}
+
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1)}
+::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,.2)}
+
+.toast{position:fixed;bottom:30px;left:50%;transform:translateX(-50%);background:rgba(10,10,20,.95);border:1px solid var(--accent);padding:9px 18px;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--accent);z-index:999;animation:toast-in .2s ease;pointer-events:none}
+@keyframes toast-in{from{opacity:0;transform:translateX(-50%) translateY(8px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+
+.ai-badge{display:inline-flex;align-items:center;gap:4px;font-size:7.5px;letter-spacing:1.5px;text-transform:uppercase;padding:2px 6px;border:1px solid currentColor;opacity:.7;flex-shrink:0;cursor:default}
+.ai-badge-dot{width:5px;height:5px;border-radius:50%;background:currentColor;flex-shrink:0}
+.ai-sel-row{display:flex;gap:6px;align-items:center;margin-bottom:10px;flex-wrap:wrap}
+.ai-prov-pill{font-size:8.5px;padding:4px 10px;border:1px solid rgba(255,255,255,.1);background:transparent;color:var(--dim);cursor:pointer;transition:all .15s;letter-spacing:1px;text-transform:uppercase;font-family:var(--font-main)}
+.ai-prov-pill.active{border-color:var(--accent);color:var(--accent);background:rgba(0,245,255,.07)}
+.ai-assign-box{background:rgba(0,245,255,.04);border:1px solid rgba(0,245,255,.12);padding:12px;margin-bottom:12px}
+.ai-model-sel{width:100%;font-family:var(--font-main);font-size:10px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.12);color:var(--text);padding:5px 8px;outline:none;margin-top:6px;transition:border-color .2s}
+.ai-model-sel:focus{border-color:var(--accent)}
+.ai-model-sel option{background:#0a0a14}
+.dual-brain-toggle{display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid rgba(168,85,247,.25);background:rgba(168,85,247,.04);margin-bottom:10px;cursor:pointer;transition:all .2s}
+.dual-brain-toggle:hover{border-color:var(--accent2);background:rgba(168,85,247,.08)}
+.dual-brain-toggle.on{border-color:var(--accent2);background:rgba(168,85,247,.1)}
+.dbt-label{font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--accent2);flex:1}
+.dbt-status{font-size:8px;color:var(--dim);letter-spacing:1px}
+.toggle-switch{width:28px;height:14px;background:rgba(255,255,255,.1);border-radius:7px;position:relative;flex-shrink:0;transition:background .2s}
+.toggle-switch.on{background:var(--accent2)}
+.toggle-switch::after{content:'';position:absolute;top:2px;left:2px;width:10px;height:10px;border-radius:50%;background:#fff;transition:left .2s}
+.toggle-switch.on::after{left:16px}
+.cross-ai-section{display:none}
+.cross-ai-section.visible{display:block}
+
+@keyframes scan{0%{background-position:0 0}100%{background-position:0 100%}}
+.node-q::after{content:'';position:absolute;inset:0;background:linear-gradient(transparent 45%,rgba(0,245,255,.03) 50%,transparent 55%);background-size:100% 200%;animation:scan 3s linear infinite;pointer-events:none}
+
+.compare-overlay{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:rgba(5,5,8,.96);border:1px solid rgba(0,245,255,.3);padding:14px 20px;z-index:90;display:flex;align-items:center;gap:12px;font-size:9.5px}
+
+.search-bar{display:none;padding:8px 20px;background:rgba(0,0,0,.3);border-bottom:1px solid rgba(255,255,255,.04);gap:8px;align-items:center}
+.search-bar.open{display:flex}
+.search-inp{flex:1;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);color:var(--text);font-family:var(--font-main);font-size:11px;padding:6px 10px;outline:none}
+.search-inp:focus{border-color:var(--accent)}
+.search-match{font-size:9px;color:var(--ok);letter-spacing:1px}
+.node.search-hl{box-shadow:0 0 0 2px var(--ok),0 0 20px rgba(0,255,157,.15)!important;z-index:15}
+
+/* ─── DEBUG PANEL ─── */
+.debug-panel{position:fixed;top:58px;right:0;bottom:0;width:420px;background:rgba(5,5,8,.98);border-left:1px solid rgba(255,184,0,.2);z-index:180;display:flex;flex-direction:column;transform:translateX(100%);transition:transform .3s cubic-bezier(.16,1,.3,1)}
+.debug-panel.open{transform:translateX(0)}
+.debug-header{padding:12px 14px;border-bottom:1px solid rgba(255,255,255,.06);display:flex;align-items:center;gap:8px;flex-shrink:0}
+.debug-title{font-family:var(--font-title);font-size:10px;letter-spacing:3px;text-transform:uppercase;color:var(--warn);flex:1}
+.debug-filter{display:flex;gap:4px;padding:8px 14px;border-bottom:1px solid rgba(255,255,255,.04);flex-shrink:0;flex-wrap:wrap}
+.dfbtn{font-family:var(--font-main);font-size:8px;padding:3px 8px;text-transform:uppercase;letter-spacing:1px;border:1px solid rgba(255,255,255,.1);background:transparent;color:var(--dim);cursor:pointer;transition:all .15s}
+.dfbtn.active{border-color:var(--warn);color:var(--warn);background:rgba(255,184,0,.06)}
+.dfbtn.fe{border-color:rgba(255,74,110,.4);color:rgba(255,74,110,.6)}
+.dfbtn.fe.active{border-color:var(--danger);color:var(--danger);background:rgba(255,74,110,.08)}
+.dfbtn.fs{border-color:rgba(0,255,157,.3);color:rgba(0,255,157,.5)}
+.dfbtn.fs.active{border-color:var(--ok);color:var(--ok);background:rgba(0,255,157,.06)}
+.debug-log{flex:1;overflow-y:auto;padding:10px 14px;display:flex;flex-direction:column;gap:6px}
+.dlog-empty{font-size:9px;color:var(--dim);opacity:.3;text-align:center;margin:auto;letter-spacing:1px}
+.dlog-entry{border:1px solid rgba(255,255,255,.06);font-size:9px;line-height:1.6;overflow:hidden;transition:border-color .2s}
+.dlog-entry:hover{border-color:rgba(255,255,255,.15)}
+.dlog-entry.type-error{border-left:2px solid var(--danger)}
+.dlog-entry.type-warn{border-left:2px solid var(--warn)}
+.dlog-entry.type-info{border-left:2px solid rgba(0,245,255,.5)}
+.dlog-entry.type-success{border-left:2px solid var(--ok)}
+.dlog-entry.type-request{border-left:2px solid rgba(168,85,247,.6)}
+.dlog-entry.type-response{border-left:2px solid rgba(0,245,255,.3)}
+.dlog-head{padding:6px 9px;display:flex;align-items:center;gap:7px;cursor:pointer;user-select:none;background:rgba(255,255,255,.02)}
+.dlog-type-badge{font-size:7px;letter-spacing:1.5px;text-transform:uppercase;padding:1px 5px;border:1px solid currentColor;flex-shrink:0}
+.dlog-entry.type-error .dlog-type-badge{color:var(--danger)}
+.dlog-entry.type-warn .dlog-type-badge{color:var(--warn)}
+.dlog-entry.type-info .dlog-type-badge{color:var(--accent)}
+.dlog-entry.type-success .dlog-type-badge{color:var(--ok)}
+.dlog-entry.type-request .dlog-type-badge{color:var(--accent2)}
+.dlog-entry.type-response .dlog-type-badge{color:rgba(0,245,255,.7)}
+.dlog-msg{flex:1;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dlog-entry.type-error .dlog-msg{color:rgba(255,100,110,.9)}
+.dlog-time{font-size:7.5px;color:rgba(255,255,255,.2);flex-shrink:0;font-family:'Space Mono',monospace}
+.dlog-body{display:none;padding:8px 9px;border-top:1px solid rgba(255,255,255,.05);background:rgba(0,0,0,.3);max-height:240px;overflow-y:auto}
+.dlog-body.open{display:block}
+.dlog-pre{font-size:8.5px;line-height:1.6;color:rgba(255,255,255,.5);white-space:pre-wrap;word-break:break-all;font-family:var(--font-main)}
+.dlog-pre.is-error{color:rgba(255,120,130,.85)}
+.dlog-pre.is-success{color:rgba(100,255,180,.7)}
+.dlog-pre.is-request{color:rgba(180,140,255,.7)}
+.dlog-pre.is-response{color:rgba(100,230,255,.6)}
+.debug-footer{padding:8px 14px;border-top:1px solid rgba(255,255,255,.05);display:flex;gap:6px;align-items:center;flex-shrink:0}
+.debug-count{font-size:8.5px;letter-spacing:1px;color:var(--dim);flex:1}
+.debug-count .ec{color:var(--danger)}
+.debug-count .wc{color:var(--warn)}
+.debug-errbanner{background:rgba(255,74,110,.08);border:1px solid rgba(255,74,110,.25);padding:6px 10px;margin:0 14px 6px;font-size:9px;color:rgba(255,110,120,.9);line-height:1.5;display:none}
+.debug-errbanner.visible{display:block}
+</style>
+</head>
+<body>
+
+<div class="bg-glow" id="bg-glow"></div>
+<div class="bg-grid"></div>
+
+<header>
+  <div>
+    <div class="logo-wrap">
+      <div class="logo">NEURON</div>
+      <div class="logo-ver">v3</div>
+    </div>
+    <div class="logo-sub">MULTI-MODEL BRANCHING REASONING</div>
+  </div>
+  <div class="hdr-center">
+    <div class="provider-chip" id="provider-chip">
+      <div class="provider-dot off" id="provider-dot"></div>
+      <span id="provider-label">NO KEY</span>
+    </div>
+  </div>
+  <div class="hdr-r">
+    <span id="chain-badge" class="chain-count" style="display:none">0 CHAINS</span>
+    <button class="btn" id="hist-btn">◧ HISTORY</button>
+    <button class="btn" id="search-btn">⌕ FIND</button>
+    <button class="btn" id="summary-btn" style="display:none">↗ INSIGHTS</button>
+    <button class="btn" id="compare-btn" style="display:none">⊞ COMPARE</button>
+    <button class="btn" id="export-btn" style="display:none">↑ EXPORT</button>
+    <button class="btn" id="clear-btn" style="display:none">✕ CLEAR</button>
+    <button class="btn btn-debug" id="debug-btn">⬡ DEBUG</button>
+    <button class="btn" id="config-btn">⚙ CONFIG</button>
+    <button class="btn" id="theme-btn">◈ THEME</button>
+  </div>
+</header>
+
+<main>
+  <div class="toolbar">
+    <div class="tb-group">
+      <span class="tb-label">Provider</span>
+      <select class="sel" id="provider-sel">
+        <option value="anthropic">Anthropic</option>
+        <option value="openai">OpenAI</option>
+        <option value="gemini">Google Gemini</option>
+        <option value="ollama">Ollama (Local)</option>
+        <option value="openrouter">OpenRouter</option>
+        <option value="clod">Clod</option>
+        <option value="custom">Custom API</option>
+      </select>
+    </div>
+    <div class="tb-group">
+      <span class="tb-label">Model</span>
+      <select class="sel" id="model-sel"></select>
+    </div>
+    <div class="tb-sep"></div>
+    <div class="tb-group">
+      <span class="tb-label">Temp</span>
+      <div class="slider-wrap">
+        <input type="range" id="temp-slider" min="0" max="10" value="7">
+        <span class="slider-val" id="temp-val">0.7</span>
+      </div>
+    </div>
+    <div class="tb-group">
+      <span class="tb-label">Depth</span>
+      <select class="sel" id="depth-sel">
+        <option value="3">3 steps</option>
+        <option value="4" selected>4 steps</option>
+        <option value="5">5 steps</option>
+        <option value="6">6 steps</option>
+        <option value="7">7 steps</option>
+      </select>
+    </div>
+    <div class="tb-group">
+      <span class="tb-label">Branches</span>
+      <select class="sel" id="branches-sel">
+        <option value="1" selected>1 branch</option>
+        <option value="2">2 branches</option>
+        <option value="3">3 branches</option>
+      </select>
+    </div>
+    <div class="tb-sep"></div>
+    <div class="tb-group">
+      <span class="tb-label">Mode</span>
+      <div class="mode-pills">
+        <button class="pill active" data-mode="analytical">Analytical</button>
+        <button class="pill" data-mode="creative">Creative</button>
+        <button class="pill" data-mode="debate">Debate</button>
+        <button class="pill" data-mode="compress">Compress</button>
+        <button class="pill" data-mode="socratic">Socratic</button>
+        <button class="pill" data-mode="steelman">Steelman</button>
+      </div>
+    </div>
+    <div class="tb-spacer"></div>
+    <div class="tb-group">
+      <button class="btn btn-icon" id="minimap-btn" title="Toggle minimap">⊞</button>
+    </div>
+  </div>
+
+  <div class="search-bar" id="search-bar">
+    <span class="tb-label">FIND</span>
+    <input class="search-inp" id="search-inp" placeholder="Search steps…" type="text">
+    <span class="search-match" id="search-match"></span>
+    <button class="btn btn-icon" onclick="clearSearch()">✕</button>
+  </div>
+
+  <div class="status-bar" id="status-bar">
+    <div class="st-dot" id="st-dot"></div>
+    <span id="st-text">Ready — configure a provider to begin</span>
+    <span class="st-spacer"></span>
+    <span id="st-tokens" style="opacity:.4"></span>
+  </div>
+
+  <div class="input-zone">
+    <div class="zone-lbl">// input query <span style="opacity:.4;font-size:8px;margin-left:8px">enter or click REASON</span></div>
+    <div class="inp-row">
+      <input class="q-inp" id="q-inp" type="text" placeholder="Ask anything — a question, decision, ethical dilemma, technical problem…"/>
+      <button class="btn btn-a" id="reason-btn">REASON →</button>
+    </div>
+  </div>
+
+  <div id="graph-wrap">
+    <div id="graph-root">
+      <svg id="conn-svg"></svg>
+      <div class="empty" id="empty">
+        <div class="e-icon">⬡</div>
+        <div class="e-title">No Chains Yet</div>
+        <div class="e-hint">Enter a question above to begin</div>
+        <div class="e-examples">
+          <div class="e-ex" onclick="setEx(this)">Should I quit my job to start a company?</div>
+          <div class="e-ex" onclick="setEx(this)">What are the long-term effects of AI on employment?</div>
+          <div class="e-ex" onclick="setEx(this)">How should I architect a distributed cache system?</div>
+          <div class="e-ex" onclick="setEx(this)">Is it ethical to prioritize economic growth over environmental protection?</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<div id="minimap" style="display:none">
+  <canvas id="mm-canvas"></canvas>
+  <div class="mm-label">MAP</div>
+  <button class="mm-close" onclick="toggleMinimap()">✕</button>
+</div>
+
+<div class="hist-sidebar" id="hist-sidebar">
+  <div class="hist-title">
+    <span>Session History</span>
+    <button class="btn btn-icon" onclick="clearHistory()" style="font-size:8px;padding:2px 6px">CLEAR</button>
+  </div>
+  <div id="hist-list"><div class="hist-empty">No history yet</div></div>
+</div>
+
+<div class="summary-panel" id="summary-panel">
+  <div class="sp-title">⬡ Chain Analysis</div>
+  <div id="sp-content"></div>
+</div>
+
+<!-- DEBUG PANEL -->
+<div class="debug-panel" id="debug-panel">
+  <div class="debug-header">
+    <div class="debug-title">⬡ Debug Log</div>
+    <button class="btn" id="debug-copy-btn" style="font-size:8px;padding:3px 9px" title="Copy full log to clipboard">⊕ COPY</button>
+    <button class="btn" id="debug-clear-btn" style="font-size:8px;padding:3px 9px" title="Clear log">✕ CLEAR</button>
+    <button class="btn" onclick="document.getElementById('debug-panel').classList.remove('open')" style="font-size:8px;padding:3px 9px" title="Close debug panel">⊠ CLOSE</button>
+  </div>
+  <div class="debug-errbanner" id="debug-errbanner"></div>
+  <div class="debug-filter">
+    <button class="dfbtn active" data-f="all" onclick="setDebugFilter('all',this)">ALL</button>
+    <button class="dfbtn fe" data-f="error" onclick="setDebugFilter('error',this)">ERRORS</button>
+    <button class="dfbtn" data-f="warn" onclick="setDebugFilter('warn',this)">WARN</button>
+    <button class="dfbtn" data-f="request" onclick="setDebugFilter('request',this)">REQUESTS</button>
+    <button class="dfbtn fs" data-f="response" onclick="setDebugFilter('response',this)">RESPONSES</button>
+    <button class="dfbtn fs" data-f="success" onclick="setDebugFilter('success',this)">SUCCESS</button>
+    <button class="dfbtn" data-f="info" onclick="setDebugFilter('info',this)">INFO</button>
+  </div>
+  <div class="debug-log" id="debug-log">
+    <div class="dlog-empty">No log entries yet.<br>Trigger an API call to begin.</div>
+  </div>
+  <div class="debug-footer">
+    <span class="debug-count" id="debug-count">0 entries</span>
+    <button class="btn" id="debug-export-btn" style="font-size:8px;padding:3px 8px">↓ SAVE LOG</button>
+  </div>
+</div>
+
+<div class="modal-bg" id="fork-modal" style="display:none">
+  <div class="modal-box">
+    <div class="modal-t">⌥ FORK REASONING</div>
+    <div class="modal-d">Branch from this step. Add a tag to categorize, and optionally run with a different AI.</div>
+    <div class="modal-ctx" id="fork-ctx"></div>
+    <textarea class="modal-inp" id="fork-inp" placeholder="What different assumption, direction, or 'what if' do you want to explore?"></textarea>
+    <div style="margin-bottom:10px">
+      <div class="modal-section-t">Fork Tag (optional)</div>
+      <select class="sel" id="fork-tag-sel" style="width:100%">
+        <option value="">— no tag —</option>
+        <option value="optimistic">Optimistic</option>
+        <option value="pessimistic">Pessimistic</option>
+        <option value="contrarian">Contrarian</option>
+        <option value="technical">Technical</option>
+        <option value="ethical">Ethical</option>
+        <option value="economic">Economic</option>
+        <option value="long-term">Long-term</option>
+        <option value="short-term">Short-term</option>
+      </select>
+    </div>
+    <div class="ai-assign-box">
+      <div class="dual-brain-toggle" id="cross-ai-toggle" onclick="toggleCrossAI()">
+        <div class="dbt-label">⚡ Use a different AI for this fork</div>
+        <div class="dbt-status" id="cross-ai-status">same as main</div>
+        <div class="toggle-switch" id="cross-ai-switch"></div>
+      </div>
+      <div class="cross-ai-section" id="cross-ai-section">
+        <div style="font-size:8.5px;letter-spacing:1.5px;color:var(--dim);margin-bottom:7px;text-transform:uppercase">Fork AI Provider</div>
+        <div class="ai-sel-row" id="fork-prov-pills"></div>
+        <div style="font-size:8.5px;letter-spacing:1.5px;color:var(--dim);margin-bottom:5px;text-transform:uppercase">Fork Model</div>
+        <select class="ai-model-sel" id="fork-model-sel"></select>
+        <div style="font-size:8.5px;color:var(--dim);margin-top:7px;line-height:1.5" id="fork-key-note"></div>
+      </div>
+    </div>
+    <div style="font-size:8.5px;color:var(--dim);margin-bottom:12px;letter-spacing:1px">Ctrl+Enter to confirm.</div>
+    <div class="modal-acts">
+      <button class="btn" id="fork-cancel">CANCEL</button>
+      <button class="btn btn-v" id="fork-ok">CREATE FORK →</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="config-modal" style="display:none">
+  <div class="modal-box" style="border-color:rgba(0,245,255,.3)">
+    <div class="modal-t" style="color:var(--accent)">⚙ PROVIDER CONFIGURATION</div>
+    <div class="modal-d">Keys stored in localStorage. Never sent anywhere except the respective APIs.</div>
+    <div class="modal-section">
+      <div class="modal-section-t">Select Provider</div>
+      <div class="provider-grid" id="prov-grid"></div>
+    </div>
+    <div class="modal-section" id="key-section">
+      <div class="modal-section-t" id="key-section-title">API Key</div>
+      <div class="key-status unset" id="key-status-lbl">Not configured</div>
+      <input class="key-field" id="key-inp" type="password" placeholder="Paste your API key…" autocomplete="off"/>
+      <div style="font-size:9px;color:var(--dim);line-height:1.6;margin-bottom:10px" id="key-help"></div>
+    </div>
+    <div class="modal-section" id="ollama-section" style="display:none">
+      <div class="modal-section-t">Ollama Endpoint</div>
+      <input class="key-field" id="ollama-url" type="text" value="http://localhost:11434" placeholder="http://localhost:11434"/>
+      <div style="font-size:9px;color:var(--dim);line-height:1.6">Ensure CORS enabled: <code>OLLAMA_ORIGINS=* ollama serve</code></div>
+    </div>
+    <div class="modal-section" id="clod-section" style="display:none">
+      <div class="modal-section-t">Clod Proxy Status</div>
+      <div id="clod-proxy-status" style="font-size:9px;padding:8px 10px;border:1px solid rgba(0,245,255,.2);margin-bottom:8px;line-height:1.7;color:var(--dim)">
+        Checking proxy…
+      </div>
+      <div style="font-size:9px;color:var(--dim);line-height:1.7;margin-bottom:8px">
+        Clod requires a local proxy to bypass browser CORS restrictions.<br>
+        <strong style="color:var(--accent)">1.</strong> Save <code style="color:var(--ok)">clod-proxy.js</code> anywhere on your machine<br>
+        <strong style="color:var(--accent)">2.</strong> Run: <code style="color:var(--ok)">node clod-proxy.js</code><br>
+        <strong style="color:var(--accent)">3.</strong> Keep the terminal open while using Clod
+      </div>
+      <button class="btn btn-ok" onclick="checkClodProxy()" style="font-size:8px;padding:4px 10px">↺ CHECK PROXY</button>
+    </div>
+    <div class="modal-section" id="custom-section" style="display:none">
+      <div class="modal-section-t">Custom API Endpoint</div>
+      <input class="key-field" id="custom-url" type="text" placeholder="https://your-api.example.com/v1/chat/completions" style="margin-bottom:6px"/>
+      <div class="modal-section-t" style="margin-top:8px">API Key (if required)</div>
+      <input class="key-field" id="custom-key" type="password" placeholder="Bearer token or API key (leave blank if none)" autocomplete="off"/>
+      <div class="modal-section-t" style="margin-top:8px">Model Name</div>
+      <input class="key-field" id="custom-model-inp" type="text" placeholder="e.g. gpt-4o, mistral-7b, my-model" style="margin-bottom:6px"/>
+      <div class="modal-section-t" style="margin-top:8px">Request Format</div>
+      <select class="sel" id="custom-format" style="width:100%;margin-bottom:8px">
+        <option value="openai">OpenAI-compatible (messages array)</option>
+        <option value="anthropic">Anthropic-compatible</option>
+        <option value="raw">Raw prompt (single string)</option>
+      </select>
+      <div class="modal-section-t" style="margin-top:8px">Extra Headers (JSON, optional)</div>
+      <textarea class="key-field" id="custom-headers" placeholder='{"X-Custom-Header":"value"}' style="min-height:48px;resize:vertical;font-size:10px"></textarea>
+      <div style="font-size:9px;color:var(--dim);line-height:1.6;margin-top:6px">Works with any OpenAI-compatible server, LM Studio, Jan, llama.cpp server, LocalAI, Together, Fireworks, Groq, etc.</div>
+    </div>
+    <div class="modal-acts">
+      <button class="btn" id="config-cancel">CANCEL</button>
+      <button class="btn btn-ok" id="test-conn-btn">TEST CONNECTION</button>
+      <button class="btn btn-a" id="config-save">SAVE & CLOSE</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="export-modal" style="display:none">
+  <div class="export-box">
+    <div class="modal-t" style="color:var(--accent)">↑ EXPORT REASONING</div>
+    <div class="export-tabs">
+      <div class="export-tab active" data-fmt="md" onclick="switchExportFmt('md')">MARKDOWN</div>
+      <div class="export-tab" data-fmt="json" onclick="switchExportFmt('json')">JSON</div>
+      <div class="export-tab" data-fmt="txt" onclick="switchExportFmt('txt')">PLAIN TEXT</div>
+      <div class="export-tab" data-fmt="csv" onclick="switchExportFmt('csv')">CSV</div>
+    </div>
+    <div class="export-pre" id="export-pre"></div>
+    <div class="modal-acts">
+      <button class="btn" onclick="closeExport()">CLOSE</button>
+      <button class="btn btn-ok" id="copy-export">⊕ COPY</button>
+      <button class="btn btn-a" id="dl-export">↓ DOWNLOAD</button>
+    </div>
+  </div>
+</div>
+
+<div class="theme-panel" id="theme-panel">
+  <div class="tp-title">◈ Visual Theme</div>
+  <div class="preset-grid" id="preset-grid"></div>
+  <hr class="sep">
+  <div class="cust-t">// Node Shape</div>
+  <div class="node-shape-opt">
+    <button class="shape-btn active" data-r="0" onclick="setNodeRadius(0,this)">Sharp</button>
+    <button class="shape-btn" data-r="4" onclick="setNodeRadius(4,this)">Soft</button>
+    <button class="shape-btn" data-r="10" onclick="setNodeRadius(10,this)">Round</button>
+  </div>
+  <div class="cust-t">// Connector Style</div>
+  <div class="conn-opt">
+    <button class="shape-btn active" data-cs="curve" onclick="setConnStyle('curve',this)">Bezier</button>
+    <button class="shape-btn" data-cs="straight" onclick="setConnStyle('straight',this)">Straight</button>
+    <button class="shape-btn" data-cs="elbow" onclick="setConnStyle('elbow',this)">Elbow</button>
+  </div>
+  <div class="cust-t">// Font</div>
+  <div class="font-opt">
+    <div class="font-pill active" data-font="'IBM Plex Mono',monospace" onclick="setFont(this)">Mono</div>
+    <div class="font-pill" data-font="'Space Grotesk',sans-serif" onclick="setFont(this)">Grotesk</div>
+    <div class="font-pill" data-font="system-ui,sans-serif" onclick="setFont(this)">System</div>
+    <div class="font-pill" data-font="'Courier New',monospace" onclick="setFont(this)">Courier</div>
+  </div>
+  <div class="cust-t">// Node Width</div>
+  <div class="slider-wrap" style="margin-bottom:14px">
+    <input type="range" id="node-w-slider" min="240" max="440" value="300" step="20">
+    <span class="slider-val" id="node-w-val">300px</span>
+  </div>
+  <div class="cust-t">// Grid Opacity</div>
+  <div class="slider-wrap" style="margin-bottom:14px">
+    <input type="range" id="grid-opacity-slider" min="0" max="10" value="3">
+    <span class="slider-val" id="grid-opacity-val">3%</span>
+  </div>
+  <hr class="sep">
+  <div class="cust-t">// Custom Colors</div>
+  <div class="cust-t">// UI Scale</div>
+<div class="clr-row"><span class="clr-lbl">Interface Zoom</span><div class="clr-r"><input type="range" id="ui-scale-slider" min="70" max="130" value="100" style="width:90px"><span class="clr-hex" id="ui-scale-val" style="width:36px">100%</span></div></div>
+<hr class="sep">
+<div class="clr-row"><span class="clr-lbl">Background</span><div class="clr-r"><input type="color" id="cc-bg" value="#050508"><span class="clr-hex" id="ch-bg">#050508</span></div></div>
+  <div class="clr-row"><span class="clr-lbl">Node Fill</span><div class="clr-r"><input type="color" id="cc-node" value="#0d0d1c"><span class="clr-hex" id="ch-node">#0d0d1c</span></div></div>
+  <div class="clr-row"><span class="clr-lbl">Accent</span><div class="clr-r"><input type="color" id="cc-accent" value="#00f5ff"><span class="clr-hex" id="ch-accent">#00f5ff</span></div></div>
+  <div class="clr-row"><span class="clr-lbl">Secondary</span><div class="clr-r"><input type="color" id="cc-accent2" value="#a855f7"><span class="clr-hex" id="ch-accent2">#a855f7</span></div></div>
+  <div class="clr-row"><span class="clr-lbl">Text</span><div class="clr-r"><input type="color" id="cc-text" value="#e0e8ff"><span class="clr-hex" id="ch-text">#e0e8ff</span></div></div>
+  <button class="btn btn-a" id="apply-custom" style="width:100%;margin-top:12px">APPLY CUSTOM</button>
+</div>
+
+<script>
+let CW=300, CG=64, RH=168, RG=24, QH=86, QG=18;
+
+/* ═══════════════════════════════════════════════════════
+   DEBUG SYSTEM
+═══════════════════════════════════════════════════════ */
+const DBG={
+  entries:[],
+  filter:'all',
+  errorCount:0,
+  warnCount:0,
+
+  _ts(){
+    const n=new Date();
+    return `${String(n.getHours()).padStart(2,'0')}:${String(n.getMinutes()).padStart(2,'0')}:${String(n.getSeconds()).padStart(2,'0')}.${String(n.getMilliseconds()).padStart(3,'0')}`;
+  },
+
+  log(type, summary, detail){
+    const e={id:Date.now()+Math.random(),type,summary,detail:detail||'',ts:this._ts(),open:false};
+    this.entries.unshift(e);
+    if(this.entries.length>200)this.entries.pop();
+    if(type==='error'){
+      this.errorCount++;
+      const btn=document.getElementById('debug-btn');
+      if(btn)btn.classList.add('has-error');
+      const banner=document.getElementById('debug-errbanner');
+      if(banner){banner.textContent='⚠ '+summary;banner.classList.add('visible');}
+    }
+    if(type==='warn') this.warnCount++;
+    this._render();
+    this._updateCount();
+  },
+
+  info(msg,detail){this.log('info',msg,detail)},
+  warn(msg,detail){this.log('warn',msg,detail)},
+  error(msg,detail){this.log('error',msg,detail)},
+  success(msg,detail){this.log('success',msg,detail)},
+  request(msg,detail){this.log('request',msg,detail)},
+  response(msg,detail){this.log('response',msg,detail)},
+
+  _render(){
+    const container=document.getElementById('debug-log');
+    if(!container)return;
+    const filtered=this.filter==='all'?this.entries:this.entries.filter(e=>e.type===this.filter);
+    if(filtered.length===0){
+      container.innerHTML=`<div class="dlog-empty">${this.filter==='all'?'No log entries yet.<br>Trigger an API call to begin.':'No entries of this type.'}</div>`;
+      return;
+    }
+    container.innerHTML=filtered.map(e=>{
+      const preClass=e.type==='error'?'is-error':e.type==='success'?'is-success':e.type==='request'?'is-request':e.type==='response'?'is-response':'';
+      const hasDetail=e.detail&&e.detail.length>0;
+      return `<div class="dlog-entry type-${e.type}" id="dlog-${e.id}">
+        <div class="dlog-head" ${hasDetail?`onclick="DBG._toggle('${e.id}')"`:'style="cursor:default"'}>
+          <span class="dlog-type-badge">${e.type}</span>
+          <span class="dlog-msg">${this._esc(e.summary)}</span>
+          <span class="dlog-time">${e.ts}</span>
+          ${hasDetail?`<span style="font-size:8px;color:rgba(255,255,255,.2);margin-left:2px">${e.open?'▴':'▾'}</span>`:''}
+        </div>
+        ${hasDetail?`<div class="dlog-body${e.open?' open':''}"><pre class="dlog-pre ${preClass}">${this._esc(e.detail)}</pre></div>`:''}
+      </div>`;
+    }).join('');
+  },
+
+  _toggle(id){
+    const e=this.entries.find(x=>String(x.id)===String(id));
+    if(e)e.open=!e.open;
+    this._render();
+  },
+
+  _updateCount(){
+    const el=document.getElementById('debug-count');
+    if(!el)return;
+    const ec=this.errorCount,wc=this.warnCount;
+    el.innerHTML=`${this.entries.length} entries · <span class="ec">${ec} err</span> · <span class="wc">${wc} warn</span>`;
+  },
+
+  _esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')},
+
+  clear(){
+    this.entries=[];this.errorCount=0;this.warnCount=0;
+    const btn=document.getElementById('debug-btn');if(btn)btn.classList.remove('has-error');
+    const banner=document.getElementById('debug-errbanner');if(banner)banner.classList.remove('visible');
+    this._render();this._updateCount();
+  },
+
+  toText(){
+    return this.entries.map(e=>`[${e.ts}] [${e.type.toUpperCase()}] ${e.summary}${e.detail?'\n'+e.detail:''}`).join('\n\n');
+  }
+};
+
+function setDebugFilter(f,btn){
+  DBG.filter=f;
+  document.querySelectorAll('.dfbtn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  DBG._render();
+}
+
+document.getElementById('debug-btn').addEventListener('click',e=>{
+  e.stopPropagation();
+  const panel=document.getElementById('debug-panel');
+  const isOpen=panel.classList.contains('open');
+  if(isOpen){
+    panel.classList.remove('open');
+  } else {
+    panel.classList.add('open');
+    document.getElementById('debug-btn').classList.remove('has-error');
+    document.getElementById('debug-errbanner').classList.remove('visible');
+    document.getElementById('theme-panel').classList.remove('open');
+    document.getElementById('summary-panel').classList.remove('open');
+    document.getElementById('hist-sidebar').classList.remove('open');
+  }
+});
+
+document.getElementById('debug-clear-btn').addEventListener('click',()=>{DBG.clear();toast('Debug log cleared')});
+document.getElementById('debug-copy-btn').addEventListener('click',()=>{
+  navigator.clipboard.writeText(DBG.toText());toast('Debug log copied');
+});
+document.getElementById('debug-export-btn').addEventListener('click',()=>{
+  const blob=new Blob([DBG.toText()],{type:'text/plain'});
+  const a=Object.assign(document.createElement('a'),{href:URL.createObjectURL(blob),download:`neuron-debug-${Date.now()}.txt`});
+  a.click();URL.revokeObjectURL(a.href);
+});
+
+/* ═══════════════════════════════════════════════════════
+   APP STATE & PROVIDERS
+═══════════════════════════════════════════════════════ */
+const S={
+  question:'',chains:[],nextId:0,pendingFork:null,
+  mode:'analytical',totalTokens:0,
+  configProvider:'anthropic',minimapVisible:false,
+  collapsedChains:new Set(),
+  forkCrossAI:false,forkAIProv:'openai',forkAIModel:'',
+  compareMode:false,compareSelected:[],
+  history:[],
+  bookmarks:[],
+  annotations:{},
+  ratings:{},
+  exportFmt:'md',
+  tags:{}
+};
+
+const PROVIDERS={
+  anthropic:{name:'Anthropic',color:'#00f5ff',models:['claude-sonnet-4-20250514','claude-opus-4-20250514','claude-haiku-4-5-20251001'],keyLink:'https://console.anthropic.com',keyHelp:'Get your key at console.anthropic.com → API Keys',hasKey:true},
+  openai:{name:'OpenAI',color:'#10a37f',models:['gpt-4o','gpt-4o-mini','gpt-4-turbo','gpt-3.5-turbo','o1-mini'],keyLink:'https://platform.openai.com/api-keys',keyHelp:'Get your key at platform.openai.com → API Keys',hasKey:true},
+  gemini:{name:'Google Gemini',color:'#4285f4',models:['gemini-2.0-flash','gemini-1.5-pro','gemini-1.5-flash','gemini-pro'],keyLink:'https://aistudio.google.com/app/apikey',keyHelp:'Get your key at aistudio.google.com → Get API Key',hasKey:true},
+  ollama:{name:'Ollama (Local)',color:'#ff7820',models:['llama3','mistral','phi3','gemma','llama2','mixtral'],keyLink:'',keyHelp:'No key needed — runs locally. Ensure Ollama is running.',hasKey:false},
+  openrouter:{name:'OpenRouter',color:'#a855f7',models:['tencent/hy3-preview:free','nvidia/nemotron-3-super-120b-a12b:free','openai/gpt-oss-120b:free','openai/gpt-oss-20b:free','minimax/minimax-m2.5:free','z-ai/glm-4.5-air:free','openrouter/owl-alpha','meta-llama/llama-3-70b-instruct','openai/gpt-4o'],keyLink:'https://openrouter.ai/keys',keyHelp:'Get your free key at openrouter.ai → Keys. Models ending in :free cost nothing. 200 free reqs/day.',hasKey:true},
+  clod:{name:'Clod',color:'#22d3ee',models:['openai/gpt-4o','openai/gpt-4.1','meta-llama/llama-3.3-70b-instruct','qwen/qwen-3-235b-a22b','google/gemini-2.0-flash'],keyLink:'https://app.clod.io',keyHelp:'Get your free API key at app.clod.io. 100 free requests/day, 25+ models.',hasKey:true},
+  custom:{name:'Custom API',color:'#ffb800',models:[],keyLink:'',keyHelp:'Configure your custom endpoint below.',hasKey:false}
+};
+
+function getKey(p){return localStorage.getItem(`neuron_key_${p||getCurrentProvider()}`)||''}
+function setKey(p,k){localStorage.setItem(`neuron_key_${p}`,k)}
+function getOllamaUrl(){return localStorage.getItem('neuron_ollama_url')||'http://localhost:11434'}
+function getCustomCfg(){try{return JSON.parse(localStorage.getItem('neuron_custom')||'{}')}catch{return{}}}
+function getCurrentProvider(){return document.getElementById('provider-sel').value}
+function getCurrentModel(){return document.getElementById('model-sel').value}
+function getTemp(){return parseFloat(document.getElementById('temp-slider').value)/10}
+function getDepth(){return parseInt(document.getElementById('depth-sel').value)}
+function getBranches(){return parseInt(document.getElementById('branches-sel').value)}
+
+function updateProviderModels(){
+  const prov=getCurrentProvider();
+  const info=PROVIDERS[prov];
+  const sel=document.getElementById('model-sel');
+  if(prov==='custom'){
+    const cfg=getCustomCfg();
+    const m=cfg.model||'custom-model';
+    sel.innerHTML=`<option value="${m}">${m}</option>`;
+  }else{
+    sel.innerHTML=info.models.map(m=>`<option value="${m}">${m}</option>`).join('');
+  }
+  updateProviderStatus();
+  if(prov==='ollama')fetchOllamaModels();
+}
+
+async function fetchOllamaModels(){
+  DBG.info('Fetching Ollama model list',`GET ${getOllamaUrl()}/api/tags`);
+  try{
+    const r=await fetch(`${getOllamaUrl()}/api/tags`,{signal:AbortSignal.timeout(3000)});
+    if(!r.ok){DBG.warn(`Ollama tags HTTP ${r.status}`,`Endpoint: ${getOllamaUrl()}/api/tags`);return;}
+    const d=await r.json();
+    const models=d.models?.map(m=>m.name)||[];
+    DBG.success(`Ollama models loaded (${models.length})`,models.join(', '));
+    if(models.length)document.getElementById('model-sel').innerHTML=models.map(m=>`<option value="${m}">${m}</option>`).join('');
+  }catch(e){
+    DBG.error('Failed to fetch Ollama models',`Error: ${e.message}\nEndpoint: ${getOllamaUrl()}/api/tags\nTip: Ensure Ollama is running with OLLAMA_ORIGINS=* ollama serve`);
+  }
+}
+
+function updateProviderStatus(){
+  const prov=getCurrentProvider();
+  const info=PROVIDERS[prov];
+  const hasKey=prov==='custom'||prov==='ollama'||!!getKey(prov);
+  const dot=document.getElementById('provider-dot');
+  const lbl=document.getElementById('provider-label');
+  const stdot=document.getElementById('st-dot');
+  dot.className='provider-dot'+(hasKey?'':' off');
+  lbl.textContent=hasKey?info.name.toUpperCase():'NO KEY — '+info.name.toUpperCase();
+  stdot.style.background=hasKey?'var(--ok)':'var(--danger)';
+  stdot.style.boxShadow=hasKey?'0 0 6px var(--ok)':'0 0 6px var(--danger)';
+  if(hasKey)setStatus(`Ready — ${info.name} / ${getCurrentModel()}`);
+  else setStatus(`API key required for ${info.name}`);
+}
+
+document.getElementById('provider-sel').addEventListener('change',updateProviderModels);
+
+const THEMES={
+  void  :{name:'VOID',   bg:'#050508',bg2:'#0a0a14',node:'#0d0d1c',a:'#00f5ff',a2:'#a855f7',txt:'#e0e8ff',prev:'linear-gradient(135deg,#050508 45%,#00f5ff1a)'},
+  neural:{name:'NEURAL', bg:'#080412',bg2:'#100820',node:'#140a22',a:'#ff3cb4',a2:'#ff8c00',txt:'#ffe8f5',prev:'linear-gradient(135deg,#080412 45%,#ff3cb41a)'},
+  matrix:{name:'MATRIX', bg:'#000a00',bg2:'#001200',node:'#001000',a:'#00ff41',a2:'#00bb30',txt:'#ccffcc',prev:'linear-gradient(135deg,#000a00 45%,#00ff411a)'},
+  ember :{name:'EMBER',  bg:'#0c0600',bg2:'#160900',node:'#1a0b00',a:'#ff7820',a2:'#ff3344',txt:'#fff0e0',prev:'linear-gradient(135deg,#0c0600 45%,#ff78201a)'},
+  arctic:{name:'ARCTIC', bg:'#f0f5ff',bg2:'#e2eaff',node:'#ffffff',a:'#1e50c8',a2:'#6820a8',txt:'#0a1040',prev:'linear-gradient(135deg,#f0f5ff 45%,#1e50c81a)'},
+  ghost :{name:'GHOST',  bg:'#08080c',bg2:'#0e0e18',node:'#12121e',a:'#c8c8ff',a2:'#8888cc',txt:'#d0d0f0',prev:'linear-gradient(135deg,#08080c 45%,#c8c8ff14)'},
+  amber :{name:'AMBER',  bg:'#0a0700',bg2:'#110b00',node:'#160e00',a:'#ffb800',a2:'#ff7800',txt:'#fff8e0',prev:'linear-gradient(135deg,#0a0700 45%,#ffb8001a)'},
+  slate :{name:'SLATE',  bg:'#0c0e14',bg2:'#12151f',node:'#161a28',a:'#7eb8ff',a2:'#58d4c8',txt:'#d0deff',prev:'linear-gradient(135deg,#0c0e14 45%,#7eb8ff1a)'},
+  nord  :{name:'NORD',   bg:'#2e3440',bg2:'#3b4252',node:'#434c5e',a:'#88c0d0',a2:'#b48ead',txt:'#eceff4',prev:'linear-gradient(135deg,#2e3440 45%,#88c0d01a)'},
+  solarized:{name:'SOLAR',bg:'#002b36',bg2:'#073642',node:'#073642',a:'#2aa198',a2:'#6c71c4',txt:'#fdf6e3',prev:'linear-gradient(135deg,#002b36 45%,#2aa1981a)'},
+};
+
+let activeThemeKey='void';
+function h2r(h,a){const r=parseInt(h.slice(1,3),16),g=parseInt(h.slice(3,5),16),b=parseInt(h.slice(5,7),16);return `rgba(${r},${g},${b},${a})`}
+
+function applyTheme(key,custom){
+  activeThemeKey=key||'custom';
+  const t=custom||THEMES[key];
+  const R=document.documentElement;
+  R.style.setProperty('--bg',t.bg);
+  R.style.setProperty('--bg2',t.bg2||t.bg);
+  R.style.setProperty('--node-bg',h2r(t.node||'#0d0d1c',.92));
+  R.style.setProperty('--node-border',h2r(t.a,.22));
+  R.style.setProperty('--accent',t.a);
+  R.style.setProperty('--accent2',t.a2);
+  R.style.setProperty('--text',t.txt);
+  R.style.setProperty('--dim',h2r(t.txt,.48));
+  R.style.setProperty('--glow',h2r(t.a,.14));
+  R.style.setProperty('--grid',h2r(t.a,.04));
+  document.getElementById('bg-glow').style.background=
+    `radial-gradient(ellipse 60% 50% at 15% 15%,${h2r(t.a,.05)} 0%,transparent 60%),`+
+    `radial-gradient(ellipse 60% 50% at 85% 85%,${h2r(t.a2,.05)} 0%,transparent 60%)`;
+  document.querySelectorAll('.pcard').forEach(c=>c.classList.toggle('active',c.dataset.k===key));
+  renderConns();
+}
+
+function setNodeRadius(r,btn){
+  document.documentElement.style.setProperty('--node-radius',r+'px');
+  document.querySelectorAll('.shape-btn[data-r]').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderAll();
+}
+
+function setConnStyle(cs,btn){
+  document.documentElement.style.setProperty('--conn-style',cs);
+  S.connStyle=cs;
+  document.querySelectorAll('.shape-btn[data-cs]').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderConns();
+}
+
+function setFont(el){
+  document.querySelectorAll('.font-pill').forEach(p=>p.classList.remove('active'));
+  el.classList.add('active');
+  document.documentElement.style.setProperty('--font-main',el.dataset.font);
+  document.body.style.fontFamily=el.dataset.font;
+}
+
+document.getElementById('node-w-slider').addEventListener('input',function(){
+  CW=parseInt(this.value);
+  document.documentElement.style.setProperty('--node-w',CW+'px');
+  document.getElementById('node-w-val').textContent=CW+'px';
+  renderAll();
+});
+
+document.getElementById('grid-opacity-slider').addEventListener('input',function(){
+  const v=parseInt(this.value);
+  document.getElementById('grid-opacity-val').textContent=v+'%';
+  const accent=getComputedStyle(document.documentElement).getPropertyValue('--accent').trim()||'#00f5ff';
+  document.documentElement.style.setProperty('--grid',h2r(accent,v/100));
+});
+
+document.getElementById('ui-scale-slider').addEventListener('input',function(){
+  const v=parseInt(this.value);
+  document.getElementById('ui-scale-val').textContent=v+'%';
+  document.documentElement.style.zoom=v/100;
+});
+
+function buildPresets(){
+  const g=document.getElementById('preset-grid');
+  for(const[k,t]of Object.entries(THEMES)){
+    const c=document.createElement('div');
+    c.className='pcard'+(k===activeThemeKey?' active':'');
+    c.dataset.k=k;
+    c.innerHTML=`<div class="pprev" style="background:${t.prev};border:1px solid ${t.a}28"></div><div class="pname">${t.name}</div>`;
+    c.addEventListener('click',()=>applyTheme(k));
+    g.appendChild(c);
+  }
+}
+
+['bg','node','accent','accent2','text'].forEach(k=>{
+  const inp=document.getElementById(`cc-${k}`);
+  const hex=document.getElementById(`ch-${k}`);
+  if(inp&&hex)inp.addEventListener('input',()=>{hex.textContent=inp.value});
+});
+document.getElementById('apply-custom').addEventListener('click',()=>{
+  applyTheme(null,{bg:document.getElementById('cc-bg').value,bg2:document.getElementById('cc-bg').value,node:document.getElementById('cc-node').value,a:document.getElementById('cc-accent').value,a2:document.getElementById('cc-accent2').value,txt:document.getElementById('cc-text').value});
+  document.querySelectorAll('.pcard').forEach(c=>c.classList.remove('active'));
+});
+document.getElementById('theme-btn').addEventListener('click',e=>{
+  e.stopPropagation();
+  document.getElementById('summary-panel').classList.remove('open');
+  document.getElementById('debug-panel').classList.remove('open');
+  document.getElementById('theme-panel').classList.toggle('open');
+});
+document.addEventListener('click',e=>{
+  const p=document.getElementById('theme-panel');
+  if(!p.contains(e.target)&&e.target.id!=='theme-btn')p.classList.remove('open');
+  const h=document.getElementById('hist-sidebar');
+  if(!h.contains(e.target)&&e.target.id!=='hist-btn')h.classList.remove('open');
+  // Debug panel is only closed by its own button or the X inside it — not by outside clicks
+});
+
+document.querySelectorAll('.pill').forEach(p=>{
+  p.addEventListener('click',()=>{
+    document.querySelectorAll('.pill').forEach(x=>x.classList.remove('active'));
+    p.classList.add('active');
+    S.mode=p.dataset.mode;
+  });
+});
+
+document.getElementById('temp-slider').addEventListener('input',function(){
+  document.getElementById('temp-val').textContent=(this.value/10).toFixed(1);
+});
+
+function setStatus(txt,type){
+  const el=document.getElementById('st-text');
+  el.textContent=txt;
+  el.style.color=type==='error'?'var(--danger)':type==='ok'?'var(--ok)':'var(--dim)';
+}
+function updateTokens(){
+  const el=document.getElementById('st-tokens');
+  if(S.totalTokens>0)el.textContent=`~${S.totalTokens.toLocaleString()} tokens`;
+  else el.textContent='';
+}
+function toast(msg){
+  // Stack toasts above each other so they don't overlap and shrink
+  const existing=document.querySelectorAll('.toast');
+  const offset=30+existing.length*38;
+  const t=document.createElement('div');
+  t.className='toast';t.textContent=msg;
+  t.style.bottom=offset+'px';
+  document.body.appendChild(t);
+  setTimeout(()=>{t.style.opacity='0';t.style.transition='opacity .3s';setTimeout(()=>t.remove(),300)},2500);
+}
+
+function saveToHistory(){
+  if(!S.question||S.chains.length===0)return;
+  const entry={ts:Date.now(),question:S.question,mode:S.mode,chains:JSON.parse(JSON.stringify(S.chains)),provider:getCurrentProvider(),model:getCurrentModel()};
+  S.history.unshift(entry);
+  if(S.history.length>20)S.history.pop();
+  try{localStorage.setItem('neuron_hist',JSON.stringify(S.history.slice(0,20)))}catch(e){}
+  renderHistory();
+}
+
+function loadHistory(){
+  try{const h=JSON.parse(localStorage.getItem('neuron_hist')||'[]');S.history=h;}catch(e){}
+  renderHistory();
+}
+
+function renderHistory(){
+  const list=document.getElementById('hist-list');
+  if(S.history.length===0){list.innerHTML='<div class="hist-empty">No history yet</div>';return;}
+  list.innerHTML=S.history.map((h,i)=>`
+    <div class="hist-item" onclick="restoreHistory(${i})">
+      <div>${h.question.slice(0,60)}${h.question.length>60?'…':''}</div>
+      <div class="hist-item-meta">${new Date(h.ts).toLocaleString()} · ${h.mode} · ${h.chains.length} chain(s)</div>
+    </div>`).join('');
+}
+
+function restoreHistory(i){
+  const h=S.history[i];
+  S.question=h.question;
+  S.chains=h.chains;
+  S.nextId=h.chains.reduce((m,c)=>Math.max(m,c.id+1),0);
+  S.totalTokens=0;
+  S.collapsedChains.clear();
+  document.getElementById('q-inp').value=h.question;
+  document.getElementById('hist-sidebar').classList.remove('open');
+  renderAll();
+  toast('History restored');
+}
+
+function clearHistory(){
+  S.history=[];
+  localStorage.removeItem('neuron_hist');
+  renderHistory();
+  toast('History cleared');
+}
+
+document.getElementById('hist-btn').addEventListener('click',e=>{
+  e.stopPropagation();
+  document.getElementById('hist-sidebar').classList.toggle('open');
+  document.getElementById('theme-panel').classList.remove('open');
+  document.getElementById('summary-panel').classList.remove('open');
+  document.getElementById('debug-panel').classList.remove('open');
+});
+
+document.getElementById('search-btn').addEventListener('click',()=>{
+  const bar=document.getElementById('search-bar');
+  bar.classList.toggle('open');
+  if(bar.classList.contains('open'))document.getElementById('search-inp').focus();
+  else clearSearch();
+});
+
+document.getElementById('search-inp').addEventListener('input',doSearch);
+
+function doSearch(){
+  const q=document.getElementById('search-inp').value.toLowerCase().trim();
+  document.querySelectorAll('.node').forEach(n=>n.classList.remove('search-hl'));
+  if(!q){document.getElementById('search-match').textContent='';return;}
+  let count=0;
+  document.querySelectorAll('.node').forEach(n=>{
+    const txt=n.textContent.toLowerCase();
+    if(txt.includes(q)){n.classList.add('search-hl');count++;}
+  });
+  document.getElementById('search-match').textContent=count?`${count} match${count>1?'es':''}` :'no matches';
+}
+
+function clearSearch(){
+  document.getElementById('search-inp').value='';
+  document.getElementById('search-match').textContent='';
+  document.querySelectorAll('.node').forEach(n=>n.classList.remove('search-hl'));
+  document.getElementById('search-bar').classList.remove('open');
+}
+
+document.getElementById('summary-btn').addEventListener('click',()=>{
+  buildSummaryPanel();
+  document.getElementById('summary-panel').classList.toggle('open');
+  document.getElementById('theme-panel').classList.remove('open');
+  document.getElementById('debug-panel').classList.remove('open');
+});
+
+function buildSummaryPanel(){
+  if(S.chains.length===0)return;
+  const allSteps=S.chains.flatMap(c=>c.steps);
+  const avgConf=allSteps.length?allSteps.reduce((s,x)=>s+(x.confidence||.8),0)/allSteps.length:0;
+  const typeCounts={};
+  allSteps.forEach(s=>{typeCounts[s.type]=(typeCounts[s.type]||0)+1});
+  const topType=Object.entries(typeCounts).sort((a,b)=>b[1]-a[1])[0];
+  const highConf=allSteps.filter(s=>(s.confidence||.8)>=.85).sort((a,b)=>(b.confidence||.8)-(a.confidence||.8));
+  const lowConf=allSteps.filter(s=>(s.confidence||.8)<.6);
+  const bookmarkedSteps=S.bookmarks.map(bk=>{
+    const chain=S.chains.find(c=>c.id===bk.chainId);
+    return chain?chain.steps[bk.si]:null;
+  }).filter(Boolean);
+
+  document.getElementById('sp-content').innerHTML=`
+    <div class="sp-stat"><span class="sp-stat-key">Total Steps</span><span class="sp-stat-val">${allSteps.length}</span></div>
+    <div class="sp-stat"><span class="sp-stat-key">Chains</span><span class="sp-stat-val">${S.chains.length}</span></div>
+    <div class="sp-stat"><span class="sp-stat-key">Avg Confidence</span><span class="sp-stat-val" style="color:${avgConf>=.8?'var(--ok)':avgConf>=.5?'var(--warn)':'var(--danger)'}">${(avgConf*100).toFixed(0)}%</span></div>
+    <div class="sp-stat"><span class="sp-stat-key">Dominant Type</span><span class="sp-stat-val">${topType?topType[0]:'—'}</span></div>
+    <div class="sp-stat"><span class="sp-stat-key">High Confidence</span><span class="sp-stat-val" style="color:var(--ok)">${highConf.length} steps</span></div>
+    <div class="sp-stat"><span class="sp-stat-key">Low Confidence</span><span class="sp-stat-val" style="color:var(--danger)">${lowConf.length} steps</span></div>
+    <div class="sp-stat"><span class="sp-stat-key">Tokens Used</span><span class="sp-stat-val">~${S.totalTokens.toLocaleString()}</span></div>
+    <div class="sp-section">Confidence Histogram</div>
+    <div class="conf-hist">${allSteps.map(s=>{const c=s.confidence||.8;const clr=c>=.8?'var(--ok)':c>=.5?'var(--warn)':'var(--danger)';return `<div class="conf-bar-hist" style="height:${Math.round(c*100)}%;background:${clr};opacity:.7" title="${(c*100).toFixed(0)}%"></div>`}).join('')}</div>
+    <div class="sp-section">Top Insights</div>
+    ${highConf.slice(0,5).map(s=>`<div class="insight-chip">${(s.title||'').slice(0,60)}</div>`).join('')||'<div style="font-size:9px;color:var(--dim);opacity:.5">None yet</div>'}
+    <div class="sp-section">Step Type Breakdown</div>
+    ${Object.entries(typeCounts).map(([t,c])=>`<div class="sp-stat"><span class="sp-stat-key">${t}</span><span class="sp-stat-val">${c}</span></div>`).join('')}
+    <div class="sp-section">Bookmarks</div>
+    <div class="bookmark-list">${bookmarkedSteps.map(s=>`<div class="bm-item">★ ${(s.title||'').slice(0,50)}</div>`).join('')||'<div style="font-size:9px;color:var(--dim);opacity:.5">No bookmarks yet</div>'}</div>
+  `;
+}
+
+document.getElementById('compare-btn').addEventListener('click',()=>{
+  S.compareMode=!S.compareMode;
+  S.compareSelected=[];
+  document.getElementById('compare-btn').textContent=S.compareMode?'✕ EXIT COMPARE':'⊞ COMPARE';
+  document.getElementById('compare-btn').style.borderColor=S.compareMode?'var(--ok)':'';
+  document.getElementById('compare-btn').style.color=S.compareMode?'var(--ok)':'';
+  renderAll();
+  if(S.compareMode)toast('Compare: click two steps to diff them');
+});
+
+function handleCompareClick(chainId,si){
+  const key=`${chainId}_${si}`;
+  const idx=S.compareSelected.findIndex(x=>x===key);
+  if(idx>=0){S.compareSelected.splice(idx,1);}
+  else{S.compareSelected.push(key);if(S.compareSelected.length>2)S.compareSelected.shift();}
+  renderAll();
+  if(S.compareSelected.length===2)showCompareOverlay();
+  else removeCompareOverlay();
+}
+
+function showCompareOverlay(){
+  removeCompareOverlay();
+  const [a,b]=S.compareSelected.map(k=>{
+    const[cid,si]=k.split('_').map(Number);
+    const chain=S.chains.find(c=>c.id===cid);
+    return chain?chain.steps[si]:null;
+  });
+  if(!a||!b)return;
+  const ov=document.createElement('div');
+  ov.className='compare-overlay';ov.id='compare-ov';
+  ov.innerHTML=`
+    <div style="max-width:280px">
+      <div style="font-size:8px;letter-spacing:2px;color:var(--accent);margin-bottom:6px;text-transform:uppercase">Comparing Steps</div>
+      <div style="display:flex;gap:10px">
+        <div style="flex:1;font-size:9px;border-left:2px solid var(--ok);padding-left:7px;color:var(--dim)"><div style="color:var(--ok);margin-bottom:3px">${(a.title||'').slice(0,30)}</div>${(a.content||'').slice(0,80)}…</div>
+        <div style="flex:1;font-size:9px;border-left:2px solid var(--accent2);padding-left:7px;color:var(--dim)"><div style="color:var(--accent2);margin-bottom:3px">${(b.title||'').slice(0,30)}</div>${(b.content||'').slice(0,80)}…</div>
+      </div>
+      <div style="margin-top:8px;font-size:8px;color:var(--dim)">Confidence Δ: <span style="color:${Math.abs((a.confidence||.8)-(b.confidence||.8))<.1?'var(--ok)':'var(--warn)'}">${(Math.abs((a.confidence||.8)-(b.confidence||.8))*100).toFixed(0)}%</span></div>
+    </div>
+    <button class="btn btn-icon" onclick="removeCompareOverlay()" style="font-size:10px;align-self:flex-start">✕</button>`;
+  document.body.appendChild(ov);
+}
+
+function removeCompareOverlay(){
+  const ov=document.getElementById('compare-ov');
+  if(ov)ov.remove();
+}
+
+function buildProvGrid(){
+  const g=document.getElementById('prov-grid');g.innerHTML='';
+  for(const[k,p]of Object.entries(PROVIDERS)){
+    const c=document.createElement('div');
+    c.className='prov-card'+(k===S.configProvider?' active':'');
+    c.dataset.k=k;
+    const hasKey=k==='ollama'||k==='custom'||!!getKey(k);
+    c.innerHTML=`<div class="prov-name" style="color:${p.color}">${p.name}</div><div class="prov-models" style="color:${hasKey?'var(--ok)':'var(--dim)'}">${hasKey?'✓ configured':'not configured'}<br>${p.models.length||'∞'} models</div>`;
+    c.addEventListener('click',()=>{S.configProvider=k;buildProvGrid();updateKeySection();});
+    g.appendChild(c);
+  }
+}
+
+async function checkClodProxy(){
+  const el=document.getElementById('clod-proxy-status');
+  if(!el)return;
+  el.textContent='Checking…';el.style.color='var(--dim)';
+  try{
+    const r=await fetch('http://127.0.0.1:3099/v1/chat/completions',{method:'OPTIONS',signal:AbortSignal.timeout(2000)});
+    el.innerHTML='<span style="color:var(--ok)">✓ Proxy is running</span> — Clod requests will work.';
+  }catch(e){
+    el.innerHTML='<span style="color:var(--danger)">✗ Proxy not detected</span> — Run <code style="color:var(--warn)">node clod-proxy.js</code> in a terminal first.';
+  }
+}
+
+function updateKeySection(){
+  const prov=PROVIDERS[S.configProvider];
+  const ks=document.getElementById('key-section');
+  const os=document.getElementById('ollama-section');
+  const cs=document.getElementById('custom-section');
+  const clodS=document.getElementById('clod-section');
+  ks.style.display='none';os.style.display='none';cs.style.display='none';clodS.style.display='none';
+  if(S.configProvider==='ollama'){os.style.display='';document.getElementById('ollama-url').value=getOllamaUrl();}
+  else if(S.configProvider==='clod'){
+    ks.style.display='';
+    clodS.style.display='';
+    document.getElementById('key-section-title').textContent='Clod API Key';
+    const key=getKey('clod');
+    const lbl=document.getElementById('key-status-lbl');
+    lbl.textContent=key?`✓ Key set (${key.slice(0,8)}…)`:'Not configured';
+    lbl.className='key-status '+(key?'set':'unset');
+    document.getElementById('key-inp').value=key||'';
+    document.getElementById('key-inp').placeholder='Paste your Clod API key…';
+    document.getElementById('key-help').innerHTML='Get your free key at <a href="https://app.clod.io" target="_blank" style="color:var(--accent)">app.clod.io</a> → API Keys. 100 free requests/day.';
+    checkClodProxy();
+  }
+  else if(S.configProvider==='custom'){
+    cs.style.display='';
+    const cfg=getCustomCfg();
+    document.getElementById('custom-url').value=cfg.url||'';
+    document.getElementById('custom-key').value=cfg.key||'';
+    document.getElementById('custom-model-inp').value=cfg.model||'';
+    document.getElementById('custom-headers').value=cfg.headers||'';
+    if(cfg.format)document.getElementById('custom-format').value=cfg.format;
+  }else{
+    ks.style.display='';
+    document.getElementById('key-section-title').textContent=`${prov.name} API Key`;
+    const key=getKey(S.configProvider);
+    const lbl=document.getElementById('key-status-lbl');
+    lbl.textContent=key?`✓ Key set (${key.slice(0,8)}…)`:'Not configured';
+    lbl.className='key-status '+(key?'set':'unset');
+    document.getElementById('key-inp').value=key||'';
+    document.getElementById('key-inp').placeholder=`Paste your ${prov.name} API key…`;
+    document.getElementById('key-help').innerHTML=prov.keyHelp+(prov.keyLink?` <a href="${prov.keyLink}" target="_blank" style="color:var(--accent)">→ open</a>`:'');
+  }
+}
+
+document.getElementById('config-btn').addEventListener('click',()=>{
+  S.configProvider=getCurrentProvider();
+  buildProvGrid();updateKeySection();
+  document.getElementById('config-modal').style.display='flex';
+});
+document.getElementById('config-cancel').addEventListener('click',()=>document.getElementById('config-modal').style.display='none');
+
+document.getElementById('test-conn-btn').addEventListener('click',async()=>{
+  const btn=document.getElementById('test-conn-btn');
+  btn.textContent='TESTING…';btn.disabled=true;
+  DBG.info(`Testing connection to ${S.configProvider}`,`Provider: ${S.configProvider}\nModel: ${PROVIDERS[S.configProvider]?.models[0]||'?'}`);
+  try{
+    const testMsg='Reply with the word PONG only.';
+    let result;
+    if(S.configProvider==='custom'){
+      saveCustomConfig();
+      result=await callAPIWith([{role:'user',content:testMsg}],'You are a test echo.',{provider:'custom',model:getCustomCfg().model||'model'});
+    }else{
+      result=await callAPIWith([{role:'user',content:testMsg}],'You are a test echo.',{provider:S.configProvider,model:PROVIDERS[S.configProvider]?.models[0]||''});
+    }
+    DBG.success(`Connection test passed`,`Provider: ${S.configProvider}\nResponse: "${result.slice(0,200)}"`);
+    toast(`✓ Connection OK — got: "${result.slice(0,30)}"`);
+  }catch(e){
+    DBG.error(`Connection test failed`,`Provider: ${S.configProvider}\nError: ${e.message}\nStack: ${e.stack||'n/a'}`);
+    toast(`✗ Connection failed: ${e.message.slice(0,60)}`);
+  }
+  btn.textContent='TEST CONNECTION';btn.disabled=false;
+});
+
+function saveCustomConfig(){
+  const cfg={
+    url:document.getElementById('custom-url').value.trim(),
+    key:document.getElementById('custom-key').value.trim(),
+    model:document.getElementById('custom-model-inp').value.trim()||'custom-model',
+    format:document.getElementById('custom-format').value,
+    headers:document.getElementById('custom-headers').value.trim()
+  };
+  localStorage.setItem('neuron_custom',JSON.stringify(cfg));
+}
+
+document.getElementById('config-save').addEventListener('click',()=>{
+  if(S.configProvider==='ollama'){
+    const u=document.getElementById('ollama-url').value.trim();
+    if(u)localStorage.setItem('neuron_ollama_url',u);
+  }else if(S.configProvider==='custom'){
+    saveCustomConfig();
+  }else{
+    const k=document.getElementById('key-inp').value.trim();
+    if(k)setKey(S.configProvider,k);
+  }
+  document.getElementById('config-modal').style.display='none';
+  updateProviderModels();
+  updateProviderStatus();
+  DBG.info(`Configuration saved for ${S.configProvider}`);
+  toast('Configuration saved');
+});
+
+/* ═══════════════════════════════════════════════════════
+   API LAYER — with debug logging
+═══════════════════════════════════════════════════════ */
+
+async function callCustomAPI(messages,system){
+  const cfg=getCustomCfg();
+  if(!cfg.url)throw new Error('Custom API URL not configured — open ⚙ CONFIG');
+  const url=cfg.url.trim();
+  const model=cfg.model||'custom-model';
+  const temp=getTemp();
+  let extraHeaders={};
+  if(cfg.headers){try{extraHeaders=JSON.parse(cfg.headers)}catch(e){throw new Error('Invalid extra headers JSON')}}
+  const authHeader=cfg.key?{Authorization:`Bearer ${cfg.key}`}:{};
+  const headers={'Content-Type':'application/json',...authHeader,...extraHeaders};
+
+  const reqBody={model,max_tokens:1500,temperature:temp,system,messages};
+  DBG.request(`Custom API → ${url}`,`Model: ${model}\nFormat: ${cfg.format||'openai'}\nTemp: ${temp}\nMessages: ${messages.length}\n\nBody:\n${JSON.stringify(reqBody,null,2)}`);
+
+  if(cfg.format==='anthropic'){
+    const r=await fetch(url,{method:'POST',headers:{...headers,'anthropic-version':'2023-06-01'},body:JSON.stringify({model,max_tokens:1500,temperature:temp,system,messages})});
+    if(!r.ok){
+      let errBody='';
+      try{errBody=JSON.stringify(await r.json(),null,2)}catch(e){errBody=await r.text().catch(()=>'')}
+      const errMsg=`HTTP ${r.status} ${r.statusText}`;
+      DBG.error(`Custom API error: ${errMsg}`,`URL: ${url}\nStatus: ${r.status} ${r.statusText}\n\nResponse body:\n${errBody}`);
+      throw new Error(errMsg);
+    }
+    const d=await r.json();
+    const text=d.content?.map(b=>b.text||'').join('')||d.choices?.[0]?.message?.content||'';
+    DBG.response(`Custom API response (anthropic fmt)`,`Status: ${r.status}\nText length: ${text.length}\n\nParsed text:\n${text.slice(0,500)}${text.length>500?'\n…(truncated)':''}`);
+    return text;
+  }else if(cfg.format==='raw'){
+    const prompt=`${system}\n\nUser: ${messages.map(m=>m.content).join('\n')}\nAssistant:`;
+    const r=await fetch(url,{method:'POST',headers,body:JSON.stringify({model,prompt,max_tokens:1500,temperature:temp})});
+    if(!r.ok){
+      let errBody='';
+      try{errBody=JSON.stringify(await r.json(),null,2)}catch(e){errBody=await r.text().catch(()=>'')}
+      const errMsg=`HTTP ${r.status} ${r.statusText}`;
+      DBG.error(`Custom API error: ${errMsg}`,`URL: ${url}\nStatus: ${r.status}\n\nResponse body:\n${errBody}`);
+      throw new Error(errMsg);
+    }
+    const d=await r.json();
+    const text=d.response||d.text||d.content||d.choices?.[0]?.text||JSON.stringify(d);
+    DBG.response(`Custom API response (raw fmt)`,`Status: ${r.status}\n\nText:\n${text.slice(0,500)}`);
+    return text;
+  }else{
+    const msgs=[{role:'system',content:system},...messages];
+    const r=await fetch(url,{method:'POST',headers,body:JSON.stringify({model,max_tokens:1500,temperature:temp,messages:msgs})});
+    if(!r.ok){
+      let errBody='';
+      try{errBody=JSON.stringify(await r.json(),null,2)}catch(e){errBody=await r.text().catch(()=>'')}
+      const errMsg=`HTTP ${r.status} ${r.statusText}`;
+      DBG.error(`Custom API error: ${errMsg}`,`URL: ${url}\nStatus: ${r.status}\n\nResponse body:\n${errBody}`);
+      throw new Error(errMsg);
+    }
+    const d=await r.json();
+    S.totalTokens+=((d.usage?.prompt_tokens||0)+(d.usage?.completion_tokens||0));
+    updateTokens();
+    const text=d.choices?.[0]?.message?.content||d.choices?.[0]?.text||JSON.stringify(d);
+    DBG.response(`Custom API response (openai fmt)`,`Status: ${r.status}\nTokens: ${JSON.stringify(d.usage||{})}\n\nText:\n${text.slice(0,500)}`);
+    return text;
+  }
+}
+
+async function callAPIWith(messages,system,opts){
+  const prov=opts?.provider||getCurrentProvider();
+  const model=opts?.model||getCurrentModel();
+  const temp=getTemp();
+
+  if(prov==='custom')return callCustomAPI(messages,system);
+
+  if(prov==='anthropic'){
+    const key=getKey('anthropic');
+    if(!key){
+      DBG.error('No Anthropic API key configured','Open ⚙ CONFIG and paste your key from console.anthropic.com');
+      throw new Error('No Anthropic API key — open ⚙ CONFIG');
+    }
+    const reqBody={model,max_tokens:1500,temperature:temp,system,messages};
+    DBG.request(`Anthropic API → /v1/messages`,`Model: ${model}\nTemp: ${temp}\nMessages: ${messages.length}\nSystem length: ${system.length}\n\nUser message:\n${messages[0]?.content?.slice(0,300)||''}${(messages[0]?.content?.length||0)>300?'\n…':''}`)
+    const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify(reqBody)});
+    if(!r.ok){
+      let errBody={};
+      try{errBody=await r.json()}catch(e){}
+      const msg=errBody?.error?.message||`HTTP ${r.status} ${r.statusText}`;
+      const detail=`Status: ${r.status} ${r.statusText}\nError type: ${errBody?.error?.type||'unknown'}\nMessage: ${msg}\n\nFull error:\n${JSON.stringify(errBody,null,2)}`;
+      DBG.error(`Anthropic API error: ${msg}`,detail);
+      throw new Error(msg);
+    }
+    const d=await r.json();
+    const usedIn=d.usage?.input_tokens||0, usedOut=d.usage?.output_tokens||0;
+    S.totalTokens+=(usedIn+usedOut);
+    updateTokens();
+    const text=d.content.map(b=>b.text||'').join('');
+    DBG.response(`Anthropic response OK`,`Model: ${d.model||model}\nInput tokens: ${usedIn} | Output tokens: ${usedOut}\nStop reason: ${d.stop_reason||'?'}\n\nText:\n${text.slice(0,500)}${text.length>500?'\n…(truncated)':''}`);
+    return text;
+  }
+
+  if(prov==='openai'||prov==='openrouter'||prov==='clod'){
+    const key=getKey(prov);
+    if(!key){
+      DBG.error(`No ${PROVIDERS[prov].name} API key configured`,`Open ⚙ CONFIG and add your key for ${PROVIDERS[prov].name}`);
+      throw new Error(`No ${PROVIDERS[prov].name} API key — open ⚙ CONFIG`);
+    }
+    const endpoint=prov==='openrouter'?'https://openrouter.ai/api/v1/chat/completions':prov==='clod'?'http://127.0.0.1:3099/v1/chat/completions':'https://api.openai.com/v1/chat/completions';
+    const extra=prov==='openrouter'?{'HTTP-Referer':'https://neuron.ai','X-Title':'NEURON'}:prov==='clod'?{'X-Title':'NEURON'}:{};
+    const reqBody={model,max_tokens:2048,temperature:temp,messages:[{role:'system',content:system},...messages]};
+    DBG.request(`${PROVIDERS[prov].name} → ${endpoint}`,`Model: ${model}\nTemp: ${temp}\nMessages: ${reqBody.messages.length}\n\nUser message:\n${messages[0]?.content?.slice(0,300)||''}`);
+    const r=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${key}`,...extra},body:JSON.stringify(reqBody)});
+    if(!r.ok){
+      let errBody={};
+      try{errBody=await r.json()}catch(e){}
+      const msg=errBody?.error?.message||`HTTP ${r.status} ${r.statusText}`;
+      DBG.error(`${PROVIDERS[prov].name} API error: ${msg}`,`Status: ${r.status} ${r.statusText}\nError type: ${errBody?.error?.type||errBody?.error?.code||'unknown'}\n\nFull error:\n${JSON.stringify(errBody,null,2)}`);
+      throw new Error(msg);
+    }
+    const d=await r.json();
+    S.totalTokens+=((d.usage?.prompt_tokens||0)+(d.usage?.completion_tokens||0));
+    updateTokens();
+    const text=d.choices[0]?.message?.content||'';
+    DBG.response(`${PROVIDERS[prov].name} response OK`,`Model: ${d.model||model}\nPrompt tokens: ${d.usage?.prompt_tokens||0} | Completion tokens: ${d.usage?.completion_tokens||0}\nFinish reason: ${d.choices[0]?.finish_reason||'?'}\n\nText:\n${text.slice(0,500)}${text.length>500?'\n…(truncated)':''}`);
+    return text;
+  }
+
+  if(prov==='gemini'){
+    const key=getKey('gemini');
+    if(!key){
+      DBG.error('No Gemini API key configured','Open ⚙ CONFIG and add your key from aistudio.google.com');
+      throw new Error('No Gemini API key — open ⚙ CONFIG');
+    }
+    const contents=[{role:'user',parts:[{text:system+'\n\n'+messages[0].content}]},...messages.slice(1).map(m=>({role:m.role==='assistant'?'model':'user',parts:[{text:m.content}]}))];
+    const reqUrl=`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`;
+    DBG.request(`Gemini → ${model}:generateContent`,`Model: ${model}\nTemp: ${temp}\nContent parts: ${contents.length}`);
+    const r=await fetch(reqUrl,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({contents,generationConfig:{temperature:temp,maxOutputTokens:1500}})});
+    if(!r.ok){
+      let errBody={};
+      try{errBody=await r.json()}catch(e){}
+      const msg=errBody?.error?.message||`HTTP ${r.status} ${r.statusText}`;
+      DBG.error(`Gemini API error: ${msg}`,`Status: ${r.status} ${r.statusText}\nError code: ${errBody?.error?.code||'?'}\nError status: ${errBody?.error?.status||'?'}\n\nFull error:\n${JSON.stringify(errBody,null,2)}`);
+      throw new Error(msg);
+    }
+    const d=await r.json();
+    const text=d.candidates?.[0]?.content?.parts?.map(p=>p.text||'').join('')||'';
+    const finishReason=d.candidates?.[0]?.finishReason||'?';
+    DBG.response(`Gemini response OK`,`Finish reason: ${finishReason}\nSafety ratings: ${JSON.stringify(d.candidates?.[0]?.safetyRatings||[])}\n\nText:\n${text.slice(0,500)}${text.length>500?'\n…(truncated)':''}`);
+    if(!text){
+      DBG.warn('Gemini returned empty text',`Finish reason: ${finishReason}\nFull response:\n${JSON.stringify(d,null,2)}`);
+    }
+    return text;
+  }
+
+  if(prov==='ollama'){
+    const url=getOllamaUrl();
+    const reqBody={model,messages:[{role:'system',content:system},...messages],stream:false,options:{temperature:temp}};
+    DBG.request(`Ollama → ${url}/api/chat`,`Model: ${model}\nTemp: ${temp}\nMessages: ${reqBody.messages.length}`);
+    const r=await fetch(`${url}/api/chat`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(reqBody)});
+    if(!r.ok){
+      const errText=await r.text().catch(()=>'');
+      const msg=`Ollama HTTP ${r.status} — is it running?`;
+      DBG.error(`Ollama error: ${msg}`,`Status: ${r.status} ${r.statusText}\nEndpoint: ${url}/api/chat\nModel: ${model}\n\nResponse body:\n${errText}\n\nTip: Start with: OLLAMA_ORIGINS=* ollama serve`);
+      throw new Error(msg);
+    }
+    const d=await r.json();
+    const text=d.message?.content||'';
+    DBG.response(`Ollama response OK`,`Model: ${d.model||model}\nDone: ${d.done}\nDuration: ${d.total_duration?Math.round(d.total_duration/1e6)+'ms':'?'}\n\nText:\n${text.slice(0,500)}`);
+    return text;
+  }
+  const msg=`Unknown provider: ${prov}`;
+  DBG.error(msg,`Received provider key "${prov}" which is not in PROVIDERS map.`);
+  throw new Error(msg);
+}
+
+async function callAPI(messages,system){return callAPIWith(messages,system,null)}
+
+function extractJSON(str){
+  // Try direct parse
+  try{const p=JSON.parse(str);if(Array.isArray(p)&&p.length)return p;}catch(e){}
+  // Find outermost [ ... ] using indexOf/lastIndexOf (most reliable)
+  const start=str.indexOf('[');
+  const end=str.lastIndexOf(']');
+  if(start!==-1&&end>start){
+    const slice=str.slice(start,end+1);
+    try{const p=JSON.parse(slice);if(Array.isArray(p)&&p.length)return p;}catch(e){
+      // Try removing trailing incomplete object (truncated response)
+      const fixed=slice.replace(/,\s*\{[^\[\]]*$/,']').replace(/,\s*$/,']');
+      try{const p=JSON.parse(fixed);if(Array.isArray(p)&&p.length)return p;}catch(e2){}
+    }
+  }
+  return null;
+}
+
+function parseSteps(txt){
+  const safeLen=(txt||'').length;
+  DBG.info('Parsing model response',`Raw text length: ${safeLen}\nFULL RAW RESPONSE:\n${txt||'(empty)'}`);
+
+  if(!txt||!txt.trim()){
+    DBG.error('Model returned empty response','The model sent back an empty string. Possible causes:\n1. Model does not exist on OpenRouter\n2. Content filtered\n3. Token limit hit\n\nCheck the RESPONSE log entry above this error.');
+    return null;
+  }
+
+  // Pass 1: raw text
+  const r1=extractJSON(txt);
+  if(r1){DBG.success(`Parsed ${r1.length} steps (raw)`);return r1;}
+
+  // Pass 2: strip fences
+  const fenceMatch=txt.match(/```(?:json)?\s*([\s\S]*?)```/);
+  if(fenceMatch){
+    const r2=extractJSON(fenceMatch[1].trim());
+    if(r2){DBG.success(`Parsed ${r2.length} steps (fence-stripped)`);return r2;}
+  }
+
+  // Pass 3: nuke all backtick lines, retry
+  const stripped=txt.split('\n').filter(l=>!l.trim().startsWith('`')).join('\n').trim();
+  const r3=extractJSON(stripped);
+  if(r3){DBG.success(`Parsed ${r3.length} steps (backtick-lines-removed)`);return r3;}
+
+  // Pass 4: pick out individual JSON objects that look like steps
+  const objMatches=[...txt.matchAll(/\{[^{}]*?"title"[^{}]*?"content"[^{}]*?\}/gs)];
+  const objs=objMatches.map(m=>{try{return JSON.parse(m[0]);}catch(e){return null;}}).filter(Boolean);
+  if(objs.length){DBG.success(`Parsed ${objs.length} steps (object-scrape fallback)`);return objs;}
+
+  DBG.error('ALL parse strategies failed',`Provider: ${getCurrentProvider()}\nModel: ${getCurrentModel()}\n\n--- FULL RAW RESPONSE ---\n${txt}\n--- END ---\n\nOpen \u29e1 DEBUG, click the RESPONSE entry to see the raw text.`);
+  return null;
+}
+
+function getSysPrompt(depth){
+  const base=`Return ONLY a valid JSON array of ${depth} step objects. Each: {"id":"s1","title":"Short title (3-6 words)","content":"Detailed 2-3 sentence reasoning.","type":"assumption|deduction|insight|conclusion|counterpoint|synthesis","confidence":0.85}. confidence is 0.0–1.0. No markdown, no explanation. Raw JSON array only.`;
+  const modes={
+    analytical:`You are a rigorous analytical reasoning engine. Break down logically, examining evidence, assumptions, and implications. ${base}`,
+    creative:`You are a creative lateral reasoning engine. Explore unexpected angles, analogies, and non-obvious connections. ${base}`,
+    debate:`You are a structured debate engine. Consider opposing viewpoints, steelman both sides, reason through tension. ${base}`,
+    compress:`You are a precision distillation engine. Find the most fundamental, high-leverage insights. Signal over noise. ${base}`,
+    socratic:`You are a Socratic reasoning engine. Question assumptions at each step, probe deeper with 'why' and 'what if'. Each step should challenge the previous. ${base}`,
+    steelman:`You are a steelman reasoning engine. Build the strongest possible case for each angle, then find the synthesis. Charitable to all views. ${base}`
+  };
+  return modes[S.mode]||modes.analytical;
+}
+
+function getForkSysPrompt(depth){
+  return `You are a reasoning engine branching from a fork point. Return ONLY a valid JSON array of ${Math.max(3,depth-1)} step objects: {"id":"s1","title":"Short title (3-6 words)","content":"Detailed 2-3 sentence reasoning.","type":"assumption|deduction|insight|conclusion|counterpoint|synthesis","confidence":0.85}. No markdown. Raw JSON only.`;
+}
+
+const chainCol=id=>S.chains.findIndex(c=>c.id===id);
+function forkRow(chain){
+  if(chain.forkFromChain===null)return 0;
+  const par=S.chains.find(c=>c.id===chain.forkFromChain);
+  if(!par)return 0;
+  return par.steps.findIndex(s=>s.id===chain.forkFromStepId)+1;
+}
+function stepPos(chainId,si){
+  const chain=S.chains.find(c=>c.id===chainId);
+  const col=chainCol(chainId),ro=forkRow(chain);
+  return{x:col*(CW+CG),y:QH+QG+(ro+si)*(RH+RG)};
+}
+
+function toggleBookmark(chainId,si){
+  const idx=S.bookmarks.findIndex(b=>b.chainId===chainId&&b.si===si);
+  if(idx>=0)S.bookmarks.splice(idx,1);
+  else S.bookmarks.push({chainId,si});
+  renderAll();
+}
+function isBookmarked(chainId,si){return S.bookmarks.some(b=>b.chainId===chainId&&b.si===si)}
+
+function getAnnotation(chainId,si){return S.annotations[`${chainId}_${si}`]||''}
+function setAnnotation(chainId,si,v){S.annotations[`${chainId}_${si}`]=v;}
+
+function getRating(chainId,si){return S.ratings[`${chainId}_${si}`]||0}
+function setRating(chainId,si,v){S.ratings[`${chainId}_${si}`]=v;}
+
+const TC={assumption:'var(--warn)',deduction:'var(--accent)',insight:'var(--accent2)',conclusion:'var(--ok)',counterpoint:'var(--danger)',synthesis:'#58d4c8'};
+const esc=s=>(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+let noteOpenKey=null;
+
+function renderAll(){
+  const root=document.getElementById('graph-root');
+  root.querySelectorAll('.node,.node-load,.chain-lbl,.chain-collapse-btn').forEach(e=>e.remove());
+  document.getElementById('conn-svg').innerHTML='';
+  const empty=document.getElementById('empty');
+
+  if(S.chains.length===0){
+    empty.style.display='';
+    ['clear-btn','export-btn','summary-btn','compare-btn'].forEach(id=>document.getElementById(id).style.display='none');
+    document.getElementById('chain-badge').style.display='none';
+    return;
+  }
+  empty.style.display='none';
+  ['clear-btn','export-btn','summary-btn','compare-btn'].forEach(id=>document.getElementById(id).style.display='');
+  document.getElementById('chain-badge').style.display='';
+  document.getElementById('chain-badge').textContent=`${S.chains.length} CHAIN${S.chains.length>1?'S':''}`;
+
+  const qn=document.createElement('div');
+  qn.className='node node-q';
+  qn.style.cssText=`left:0;top:0;width:${CW}px;`;
+  qn.innerHTML=`<div class="nhead"><span class="nbadge" style="color:var(--accent)">QUERY</span><span class="ntitle">${esc(S.question)}</span></div><div class="nbody" style="font-size:9.5px;color:var(--dim);padding:7px 11px">${esc(PROVIDERS[getCurrentProvider()]?.name||'?')} · ${esc(getCurrentModel())} · ${S.mode} · temp ${getTemp()}</div>`;
+  root.appendChild(qn);
+
+  let maxX=CW,maxY=QH+QG;
+
+  for(const chain of S.chains){
+    const col=chainCol(chain.id),ro=forkRow(chain);
+    const isCollapsed=S.collapsedChains.has(chain.id);
+    const chainTag=S.tags[chain.id];
+
+    if(chain.forkFromChain!==null){
+      const lx=col*(CW+CG),ly=QH+QG+ro*(RH+RG)-18;
+      const lbl=document.createElement('div');
+      lbl.className='chain-lbl';
+      lbl.style.cssText=`left:${lx}px;top:${ly}px`;
+      const provInfo=chain.aiProvider?PROVIDERS[chain.aiProvider]:null;
+      const mainProv=getCurrentProvider();
+      const isCross=chain.aiProvider&&chain.aiProvider!==mainProv;
+      const aiBit=isCross&&provInfo?` <span style="color:${provInfo.color};opacity:.8">[${provInfo.name.replace('Google ','').replace(' (Local)','')}]</span>`:'';
+      const tagBit=chainTag?` <span style="background:rgba(168,85,247,.2);padding:1px 5px;font-size:7px">${chainTag}</span>`:'';
+      lbl.innerHTML=`⌥ FORK ${chain.id}${tagBit} — "${(chain.forkAssumption||'').slice(0,26)}${(chain.forkAssumption||'').length>26?'...':''}"${aiBit}`;
+      lbl.dataset.cid=chain.id;
+      root.appendChild(lbl);
+    }
+
+    if(chain.steps.length>0&&chain.forkFromChain!==null){
+      const cpos=stepPos(chain.id,0);
+      const cbtn=document.createElement('button');
+      cbtn.className='chain-collapse-btn';
+      cbtn.style.cssText=`left:${cpos.x+CW-60}px;top:${cpos.y-20}px`;
+      cbtn.textContent=isCollapsed?'▶ SHOW':'▼ HIDE';
+      cbtn.addEventListener('click',()=>{
+        if(S.collapsedChains.has(chain.id))S.collapsedChains.delete(chain.id);
+        else S.collapsedChains.add(chain.id);
+        renderAll();
+      });
+      cbtn.dataset.cid=chain.id;
+      root.appendChild(cbtn);
+    }
+
+    const visSteps=isCollapsed?chain.steps.slice(0,1):chain.steps;
+
+    for(let i=0;i<visSteps.length;i++){
+      const step=visSteps[i];
+      const pos=stepPos(chain.id,i);
+      const tc=TC[step.type]||'var(--dim)';
+      const conf=step.confidence!=null?step.confidence:0.8;
+      const confPct=Math.round(conf*100);
+      const confColor=conf>=.8?'var(--ok)':conf>=.5?'var(--warn)':'var(--danger)';
+      const bm=isBookmarked(chain.id,i);
+      const rating=getRating(chain.id,i);
+      const ann=getAnnotation(chain.id,i);
+      const noteKey=`${chain.id}_${i}`;
+      const noteOpen=noteOpenKey===noteKey;
+
+      const chainProvInfo=chain.aiProvider?PROVIDERS[chain.aiProvider]:null;
+      const mainProv=getCurrentProvider();
+      const isChainCross=chain.aiProvider&&chain.aiProvider!==mainProv;
+      const aiBadgeHtml=isChainCross&&chainProvInfo?`<span class="ai-badge" style="color:${chainProvInfo.color};border-color:${chainProvInfo.color}50"><span class="ai-badge-dot" style="background:${chainProvInfo.color}"></span>${chainProvInfo.name.replace('Google ','').replace(' (Local)','')}</span>`:'';
+
+      const starHtml=`<div class="star-row">${[1,2,3,4,5].map(v=>`<span class="star${rating>=v?' active':''}" onclick="doRate(${chain.id},${i},${v},event)">★</span>`).join('')}</div>`;
+
+      const cmpStyle=S.compareMode&&S.compareSelected.includes(noteKey)?`box-shadow:0 0 0 2px var(--accent2),0 0 16px rgba(168,85,247,.2)!important;`:``
+      const n=document.createElement('div');
+      n.className='node';
+      n.dataset.chainId=chain.id;
+      n.dataset.stepIdx=i;
+      n.style.cssText=`left:${pos.x}px;top:${pos.y}px;width:${CW}px;border-left:2px solid ${tc};animation-delay:${i*.04}s;${cmpStyle}`;
+      if(S.compareMode)n.addEventListener('click',()=>handleCompareClick(chain.id,i));
+
+      n.innerHTML=`
+        <button class="bookmark-btn${bm?' on':''}" onclick="toggleBookmark(${chain.id},${i},event)" title="${bm?'Remove bookmark':'Bookmark'}">★</button>
+        <button class="node-note" onclick="toggleNote(${chain.id},${i},event)" title="Annotation">${ann?'✎':'+'}</button>
+        <div class="nhead" onclick="toggleNode(this)">
+          <span class="step-num">${i+1}</span>
+          <span class="nbadge" style="color:${tc}">${esc(step.type||'step')}</span>
+          <span class="ntitle">${esc(step.title||'')}</span>
+          <span class="nconf" style="color:${confColor}">${confPct}%</span>
+        </div>
+        <div class="conf-bar"><div class="conf-fill" style="width:${confPct}%;background:${confColor}"></div></div>
+        <div class="nbody" id="body-${chain.id}-${i}">${esc(step.content||'')}</div>
+        ${starHtml}
+        ${noteOpen?`<div class="note-popup"><textarea id="note-ta-${chain.id}-${i}" placeholder="Add annotation…">${esc(ann)}</textarea><div class="note-popup-btns"><button class="nbtn green" onclick="saveNote(${chain.id},${i})">✓ SAVE</button><button class="nbtn" onclick="closeNote(event)">✕</button></div></div>`:''}
+        <div class="nfoot">
+          ${aiBadgeHtml}
+          <button class="nbtn" onclick="openFork(${chain.id},${i})">⌥ FORK</button>
+          <button class="nbtn green" onclick="extendChain(${chain.id})">+ EXTEND</button>
+          <button class="nbtn" onclick="regenerateStep(${chain.id},${i})">↺ REGEN</button>
+          <button class="nbtn" onclick="editStep(${chain.id},${i})">✎ EDIT</button>
+          <button class="nbtn" onclick="insertStep(${chain.id},${i})">↕ INSERT</button>
+          <button class="nbtn red" onclick="deleteStep(${chain.id},${i})">✕</button>
+        </div>`;
+      root.appendChild(n);
+      maxX=Math.max(maxX,pos.x+CW);
+      maxY=Math.max(maxY,pos.y+RH);
+    }
+
+    if(chain.loading&&!isCollapsed){
+      const pos=stepPos(chain.id,visSteps.length);
+      const lo=document.createElement('div');
+      lo.className='node-load';
+      lo.style.cssText=`left:${pos.x}px;top:${pos.y}px;width:${CW}px`;
+      const loProvName=chain.aiProvider?PROVIDERS[chain.aiProvider]?.name:PROVIDERS[getCurrentProvider()]?.name;
+      const loModel=chain.aiModel||getCurrentModel();
+      lo.innerHTML=`<div class="load-lbl">Reasoning</div><div class="load-model">${esc(loProvName||'')} · ${esc(loModel)}</div><div class="dots"><span></span><span></span><span></span></div>`;
+      lo.dataset.cid=chain.id;
+      root.appendChild(lo);
+      maxX=Math.max(maxX,pos.x+CW);
+      maxY=Math.max(maxY,pos.y+100);
+    }
+  }
+
+  root.style.width=(maxX+56)+'px';
+  root.style.height=(maxY+56)+'px';
+  const svg=document.getElementById('conn-svg');
+  svg.setAttribute('width',maxX+56);
+  svg.setAttribute('height',maxY+56);
+  requestAnimationFrame(()=>{repackPositions()});
+}
+
+function doRate(chainId,si,v,e){e.stopPropagation();setRating(chainId,si,v);renderAll();}
+
+function toggleNote(chainId,si,e){
+  e.stopPropagation();
+  const key=`${chainId}_${si}`;
+  noteOpenKey=noteOpenKey===key?null:key;
+  renderAll();
+  if(noteOpenKey){const ta=document.getElementById(`note-ta-${chainId}-${si}`);if(ta){ta.focus();ta.setSelectionRange(ta.value.length,ta.value.length);}}
+}
+function saveNote(chainId,si){
+  const ta=document.getElementById(`note-ta-${chainId}-${si}`);
+  if(ta)setAnnotation(chainId,si,ta.value);
+  noteOpenKey=null;renderAll();toast('Annotation saved');
+}
+function closeNote(e){e.stopPropagation();noteOpenKey=null;renderAll();}
+
+function renderConns(){
+  const svg=document.getElementById('conn-svg');
+  svg.innerHTML='';
+  if(S.chains.length===0)return;
+  const ac=getComputedStyle(document.documentElement).getPropertyValue('--accent').trim();
+  const a2=getComputedStyle(document.documentElement).getPropertyValue('--accent2').trim();
+  const cs=S.connStyle||'curve';
+  const root=document.getElementById('graph-root');
+
+  function makePath(x1,y1,x2,y2,c,dash,w){
+    let d;
+    if(cs==='straight'||Math.abs(x1-x2)<2){
+      d=`M${x1} ${y1} L${x2} ${y2}`;
+    }else if(cs==='elbow'){
+      const my=(y1+y2)/2;
+      d=`M${x1} ${y1} L${x1} ${my} L${x2} ${my} L${x2} ${y2}`;
+    }else{
+      const mx=(x1+x2)/2;
+      d=`M${x1} ${y1} C${mx} ${y1},${mx} ${y2},${x2} ${y2}`;
+    }
+    const p=document.createElementNS('http://www.w3.org/2000/svg','path');
+    p.setAttribute('d',d);p.setAttribute('stroke',c);p.setAttribute('stroke-width',w||'1.5');
+    if(dash)p.setAttribute('stroke-dasharray','5 4');
+    p.setAttribute('fill','none');
+    svg.appendChild(p);
+  }
+
+  function addDot(x,y,c){
+    const dot=document.createElementNS('http://www.w3.org/2000/svg','circle');
+    dot.setAttribute('cx',x);dot.setAttribute('cy',y);dot.setAttribute('r','3.5');dot.setAttribute('fill',c);
+    svg.appendChild(dot);
+  }
+
+  function getNodeRect(chainId,si){
+    const el=root.querySelector(`.node[data-chain-id="${chainId}"][data-step-idx="${si}"]`);
+    if(!el)return null;
+    return{x:parseInt(el.style.left)||0,y:parseInt(el.style.top)||0,w:el.offsetWidth||CW,h:el.offsetHeight||RH};
+  }
+
+  const ac55=ac+'55',a255=a2+'55';
+
+  for(const chain of S.chains){
+    const col=chainCol(chain.id);
+    const cx=col*(CW+CG)+CW/2;
+    const isC=S.collapsedChains.has(chain.id);
+    const steps=isC?chain.steps.slice(0,1):chain.steps;
+
+    if(chain.forkFromChain===null&&steps.length>0){
+      const r=getNodeRect(chain.id,0);
+      if(r)makePath(CW/2,QH,cx,r.y,ac55,false);
+    }
+    if(chain.forkFromChain===null&&steps.length===0&&chain.loading){
+      const loadEl=root.querySelector(`.node-load[data-cid="${chain.id}"]`);
+      const ly=loadEl?parseInt(loadEl.style.top)||QH+QG:QH+QG;
+      makePath(CW/2,QH,cx,ly,ac55,true);
+    }
+    for(let i=0;i<steps.length-1;i++){
+      const r=getNodeRect(chain.id,i);
+      const r2=getNodeRect(chain.id,i+1);
+      if(r&&r2)makePath(cx,r.y+r.h,cx,r2.y,chain.forkFromChain===null?ac55:a255,false);
+    }
+    if(chain.loading&&steps.length>0&&!isC){
+      const li=steps.length-1;
+      const r=getNodeRect(chain.id,li);
+      const loadEl=root.querySelector(`.node-load[data-cid="${chain.id}"]`);
+      if(r&&loadEl){const ly=parseInt(loadEl.style.top)||0;makePath(cx,r.y+r.h,cx,ly,chain.forkFromChain===null?ac55:a255,true);}
+    }
+    if(chain.forkFromChain!==null&&steps.length>0){
+      const par=S.chains.find(c=>c.id===chain.forkFromChain);
+      if(par){
+        const fi=par.steps.findIndex(s=>s.id===chain.forkFromStepId);
+        const pc=chainCol(chain.forkFromChain);
+        const pr=getNodeRect(chain.forkFromChain,fi);
+        const myR=getNodeRect(chain.id,0);
+        if(pr&&myR){
+          const fx=(pc*(CW+CG))+CW,fy=pr.y+pr.h/2;
+          const tx=col*(CW+CG),ty=myR.y+myR.h/2;
+          makePath(fx,fy,tx,ty,a255,true);
+          addDot(tx,ty,a2+'88');
+        }
+      }
+    }
+  }
+}
+
+function resolveChainOrder(){
+  const result=[],visited=new Set();
+  function visit(c){
+    if(visited.has(c.id))return;
+    if(c.forkFromChain!==null){const p=S.chains.find(x=>x.id===c.forkFromChain);if(p)visit(p);}
+    visited.add(c.id);result.push(c);
+  }
+  S.chains.forEach(c=>visit(c));
+  return result;
+}
+
+function repackPositions(){
+  const root=document.getElementById('graph-root');
+  const nodeBottoms={};
+  let maxX=CW,maxY=QH+QG;
+  for(const chain of resolveChainOrder()){
+    const col=chainCol(chain.id);
+    const x=col*(CW+CG);
+    const isC=S.collapsedChains.has(chain.id);
+    const visCount=isC?Math.min(1,chain.steps.length):chain.steps.length;
+    let startY=QH+QG;
+    if(chain.forkFromChain!==null){
+      const par=S.chains.find(c=>c.id===chain.forkFromChain);
+      if(par){
+        const fi=par.steps.findIndex(s=>s.id===chain.forkFromStepId);
+        const key=`${chain.forkFromChain}_${fi}`;
+        startY=(nodeBottoms[key]!==undefined?nodeBottoms[key]:QH+QG+forkRow(chain)*(RH+RG))+RG;
+      }
+    }
+    const lbl=root.querySelector(`.chain-lbl[data-cid="${chain.id}"]`);
+    if(lbl)lbl.style.top=(startY-18)+'px';
+    let currentY=startY;
+    for(let i=0;i<visCount;i++){
+      const el=root.querySelector(`.node[data-chain-id="${chain.id}"][data-step-idx="${i}"]`);
+      if(!el)continue;
+      el.style.top=currentY+'px';
+      const h=el.offsetHeight;
+      nodeBottoms[`${chain.id}_${i}`]=currentY+h;
+      currentY+=h+RG;
+      maxY=Math.max(maxY,currentY);
+    }
+    const cbtn=root.querySelector(`.chain-collapse-btn[data-cid="${chain.id}"]`);
+    if(cbtn){
+      const firstEl=root.querySelector(`.node[data-chain-id="${chain.id}"][data-step-idx="0"]`);
+      if(firstEl)cbtn.style.top=(parseInt(firstEl.style.top)-20)+'px';
+    }
+    const loadEl=root.querySelector(`.node-load[data-cid="${chain.id}"]`);
+    if(loadEl){
+      loadEl.style.top=currentY+'px';
+      loadEl.style.left=x+'px';
+      currentY+=110+RG;
+      maxY=Math.max(maxY,currentY);
+    }
+    maxX=Math.max(maxX,x+CW);
+  }
+  root.style.width=(maxX+56)+'px';
+  root.style.height=(maxY+56)+'px';
+  const svg=document.getElementById('conn-svg');
+  svg.setAttribute('width',maxX+56);
+  svg.setAttribute('height',maxY+56);
+  renderConns();
+  updateMinimap();
+}
+
+function toggleNode(head){head.closest('.node').classList.toggle('collapsed')}
+
+function editStep(chainId,si){
+  const chain=S.chains.find(c=>c.id===chainId);
+  const step=chain.steps[si];
+  const body=document.getElementById(`body-${chainId}-${si}`);
+  if(!body)return;
+  const old=body.textContent;
+  body.innerHTML=`<textarea id="edit-ta-${chainId}-${si}">${old}</textarea>
+    <div style="display:flex;gap:5px;margin-top:5px">
+      <button class="nbtn green" onclick="saveEdit(${chainId},${si})">✓ SAVE</button>
+      <button class="nbtn" onclick="cancelEdit(${chainId},${si},'${encodeURIComponent(old)}')">✕</button>
+    </div>`;
+  body.classList.add('editing');
+}
+function saveEdit(chainId,si){
+  const chain=S.chains.find(c=>c.id===chainId);
+  const ta=document.getElementById(`edit-ta-${chainId}-${si}`);
+  if(ta)chain.steps[si].content=ta.value;
+  renderAll();
+}
+function cancelEdit(chainId,si,enc){
+  const body=document.getElementById(`body-${chainId}-${si}`);
+  if(body){body.textContent=decodeURIComponent(enc);body.classList.remove('editing');}
+}
+function deleteStep(chainId,si){
+  const chain=S.chains.find(c=>c.id===chainId);
+  chain.steps.splice(si,1);
+  renderAll();
+}
+
+function insertStep(chainId,si){
+  const chain=S.chains.find(c=>c.id===chainId);
+  const newStep={id:`c${chainId}_ins${Date.now()}`,title:'New Step',content:'Double-click to edit this step.',type:'insight',confidence:.75};
+  chain.steps.splice(si+1,0,newStep);
+  renderAll();
+  setTimeout(()=>editStep(chainId,si+1),50);
+}
+
+async function regenerateStep(chainId,si){
+  const chain=S.chains.find(c=>c.id===chainId);
+  const step=chain.steps[si];
+  const oldContent=step.content;
+  step.content='Regenerating…';step.confidence=.0;
+  renderAll();
+  DBG.info(`Regenerating step ${si+1} in chain ${chainId}`,`Step type: ${step.type}\nStep title: ${step.title}`);
+  try{
+    const ctx=chain.steps.slice(0,si).map((s,i)=>`${i+1}. [${s.type}] ${s.title}: ${s.content}`).join('\n');
+    const sys=`You are a reasoning engine. Return ONLY a single JSON object (not an array): {"title":"Short title","content":"2-3 sentence reasoning.","type":"assumption|deduction|insight|conclusion|counterpoint|synthesis","confidence":0.85}. Raw JSON only.`;
+    const apiOpts=chain.aiProvider?{provider:chain.aiProvider,model:chain.aiModel||PROVIDERS[chain.aiProvider]?.models[0]}:null;
+    const txt=await callAPIWith([{role:'user',content:`Question: ${S.question}\n\nContext so far:\n${ctx}\n\nRegenerate step ${si+1} (type: ${step.type}). Return a single JSON object only.`}],sys,apiOpts);
+    const clean=txt.replace(/```json|```/g,'').trim();
+    const parsed=JSON.parse(clean.startsWith('[')?JSON.parse(clean)[0]:clean);
+    if(parsed&&parsed.title){
+      chain.steps[si]={...parsed,id:step.id};
+      DBG.success(`Step ${si+1} regenerated OK`);
+      toast('Step regenerated');
+    }else throw new Error('parse fail');
+  }catch(e){
+    step.content=oldContent;step.confidence=.75;
+    DBG.error(`Step regen failed`,`Chain: ${chainId}, Step: ${si+1}\nError: ${e.message}\nStack: ${e.stack||'n/a'}`);
+    toast('Regen failed: '+e.message.slice(0,40));
+  }
+  renderAll();
+}
+
+async function extendChain(chainId){
+  const chain=S.chains.find(c=>c.id===chainId);
+  if(chain.loading)return;
+  chain.loading=true;renderAll();
+  const provName=chain.aiProvider?PROVIDERS[chain.aiProvider]?.name:PROVIDERS[getCurrentProvider()]?.name;
+  setStatus(`Extending chain via ${provName}…`);
+  DBG.info(`Extending chain ${chainId}`,`Provider: ${provName}\nCurrent steps: ${chain.steps.length}`);
+  try{
+    const ctx=chain.steps.map((s,i)=>`${i+1}. [${s.type}] ${s.title}: ${s.content}`).join('\n');
+    const sys=`You are a reasoning engine extending a chain. Return ONLY a valid JSON array of 2-3 additional step objects: {"id":"s1","title":"Short title","content":"2-3 sentence reasoning.","type":"assumption|deduction|insight|conclusion|counterpoint|synthesis","confidence":0.85}. Raw JSON only.`;
+    const apiOpts=chain.aiProvider?{provider:chain.aiProvider,model:chain.aiModel||PROVIDERS[chain.aiProvider]?.models[0]}:null;
+    const txt=await callAPIWith([{role:'user',content:`Question: ${S.question}\n\nReasoning so far:\n${ctx}\n\nContinue with 2-3 more steps.`}],sys,apiOpts);
+    const steps=parseSteps(txt);
+    if(!steps?.length)throw new Error('Empty');
+    const n=chain.steps.length;
+    chain.steps.push(...steps.map((s,i)=>({...s,id:`c${chain.id}_s${n+i}`})));
+    DBG.success(`Chain ${chainId} extended with ${steps.length} steps`);
+    setStatus('Chain extended','ok');
+  }catch(e){
+    chain.steps.push({id:`c${chain.id}_ext`,title:'Extension failed',content:e.message,type:'conclusion',confidence:.5});
+    DBG.error(`Chain extension failed`,`Chain: ${chainId}\nError: ${e.message}\nStack: ${e.stack||'n/a'}`);
+    setStatus('Extension error: '+e.message,'error');
+  }
+  chain.loading=false;renderAll();
+}
+
+function buildForkProvPills(){
+  const container=document.getElementById('fork-prov-pills');
+  container.innerHTML='';
+  for(const[k,p]of Object.entries(PROVIDERS)){
+    const pill=document.createElement('button');
+    pill.className='ai-prov-pill'+(k===S.forkAIProv?' active':'');
+    const hasKey=k==='ollama'||k==='custom'||!!getKey(k);
+    pill.style.borderColor=hasKey?p.color+'55':'rgba(255,255,255,.08)';
+    if(k===S.forkAIProv)pill.style.color=p.color;
+    pill.textContent=p.name.replace('Google ','').replace(' (Local)','');
+    pill.addEventListener('click',()=>{S.forkAIProv=k;S.forkAIModel=PROVIDERS[k].models[0]||'';buildForkProvPills();updateForkModelSel();});
+    container.appendChild(pill);
+  }
+}
+
+function updateForkModelSel(){
+  const sel=document.getElementById('fork-model-sel');
+  const prov=PROVIDERS[S.forkAIProv];
+  if(S.forkAIProv==='custom'){
+    const cfg=getCustomCfg();
+    sel.innerHTML=`<option value="${cfg.model||'custom-model'}">${cfg.model||'custom-model'}</option>`;
+  }else{
+    sel.innerHTML=prov.models.map(m=>`<option value="${m}">${m}</option>`).join('');
+  }
+  if(S.forkAIModel)sel.value=S.forkAIModel;
+  const note=document.getElementById('fork-key-note');
+  const hasKey=S.forkAIProv==='ollama'||S.forkAIProv==='custom'||!!getKey(S.forkAIProv);
+  note.innerHTML=hasKey?`<span style="color:var(--ok)">✓ ${prov.name} configured</span>`:`<span style="color:var(--danger)">⚠ No key for ${prov.name} — set in ⚙ CONFIG</span>`;
+}
+
+function toggleCrossAI(){
+  S.forkCrossAI=!S.forkCrossAI;
+  const sec=document.getElementById('cross-ai-section');
+  const sw=document.getElementById('cross-ai-switch');
+  const tog=document.getElementById('cross-ai-toggle');
+  const st=document.getElementById('cross-ai-status');
+  sec.classList.toggle('visible',S.forkCrossAI);
+  sw.classList.toggle('on',S.forkCrossAI);
+  tog.classList.toggle('on',S.forkCrossAI);
+  st.textContent=S.forkCrossAI?`using ${PROVIDERS[S.forkAIProv]?.name}`:'same as main';
+  if(S.forkCrossAI){buildForkProvPills();updateForkModelSel();}
+}
+
+document.getElementById('fork-model-sel')?.addEventListener('change',function(){S.forkAIModel=this.value;});
+
+function openFork(chainId,si){
+  const chain=S.chains.find(c=>c.id===chainId);
+  const step=chain.steps[si];
+  S.pendingFork={chainId,si,stepId:step.id};
+  document.getElementById('fork-ctx').textContent=`[${step.type}] ${step.title}: ${step.content.slice(0,100)}...`;
+  document.getElementById('fork-inp').value='';
+  document.getElementById('fork-tag-sel').value='';
+  S.forkCrossAI=false;
+  const sec=document.getElementById('cross-ai-section');
+  const sw=document.getElementById('cross-ai-switch');
+  const tog=document.getElementById('cross-ai-toggle');
+  const st=document.getElementById('cross-ai-status');
+  sec.classList.remove('visible');sw.classList.remove('on');tog.classList.remove('on');
+  st.textContent='same as main';
+  const curProv=getCurrentProvider();
+  const provKeys=Object.keys(PROVIDERS);
+  S.forkAIProv=provKeys.find(k=>k!==curProv&&(k==='ollama'||k==='custom'||!!getKey(k)))||provKeys.find(k=>k!==curProv)||curProv;
+  S.forkAIModel=PROVIDERS[S.forkAIProv]?.models[0]||'';
+  document.getElementById('fork-modal').style.display='flex';
+  setTimeout(()=>document.getElementById('fork-inp').focus(),80);
+}
+document.getElementById('fork-cancel').addEventListener('click',()=>{document.getElementById('fork-modal').style.display='none';S.pendingFork=null;});
+document.getElementById('fork-ok').addEventListener('click',doFork);
+document.getElementById('fork-inp').addEventListener('keydown',e=>{if(e.key==='Enter'&&(e.ctrlKey||e.metaKey))doFork();});
+
+async function doFork(){
+  const assumption=document.getElementById('fork-inp').value.trim();
+  if(!assumption||!S.pendingFork)return;
+  const forkTag=document.getElementById('fork-tag-sel').value;
+  document.getElementById('fork-modal').style.display='none';
+  const{chainId,si,stepId}=S.pendingFork;S.pendingFork=null;
+  const useCrossAI=S.forkCrossAI;
+  const forkProv=S.forkAIProv;
+  const forkModel=document.getElementById('fork-model-sel').value||S.forkAIModel||PROVIDERS[forkProv]?.models[0]||'';
+  const src=S.chains.find(c=>c.id===chainId);
+  const ctx=src.steps.slice(0,si+1).map((s,i)=>`${i+1}. [${s.type}] ${s.title}: ${s.content}`).join('\n');
+  const nc={id:S.nextId++,forkFromChain:chainId,forkFromStepId:stepId,forkAssumption:assumption,steps:[],loading:true,aiProvider:useCrossAI?forkProv:getCurrentProvider(),aiModel:useCrossAI?forkModel:getCurrentModel()};
+  if(forkTag)S.tags[nc.id]=forkTag;
+  const _pIdx=S.chains.findIndex(c=>c.id===chainId);
+  if(_pIdx>=0)S.chains.splice(_pIdx+1,0,nc);else S.chains.push(nc);
+  renderAll();
+  const provName=PROVIDERS[nc.aiProvider]?.name||nc.aiProvider;
+  setStatus(`Forking via ${provName} / ${nc.aiModel}…`);
+  DBG.info(`Fork created: "${assumption.slice(0,50)}"`,`From chain: ${chainId}, Step: ${si+1}\nProvider: ${provName}\nModel: ${nc.aiModel}\nCross-AI: ${useCrossAI}`);
+  try{
+    const apiOpts=useCrossAI?{provider:forkProv,model:forkModel}:null;
+    const txt=await callAPIWith([{role:'user',content:`Original question: ${S.question}\n\nReasoning so far:\n${ctx}\n\nNEW DIRECTION: ${assumption}\n\nContinue with this new direction. Return JSON only.`}],getForkSysPrompt(getDepth()),apiOpts);
+    const steps=parseSteps(txt);
+    if(!steps?.length)throw new Error('Empty response');
+    nc.steps=steps.map((s,i)=>({...s,id:`c${nc.id}_s${i}`}));
+    DBG.success(`Fork ${nc.id} completed with ${steps.length} steps`);
+    setStatus(`Fork created via ${provName}`,'ok');
+    if(useCrossAI)toast(`Fork ran on ${provName}`);
+  }catch(e){
+    nc.steps=[{id:`c${nc.id}_s0`,title:'Fork failed',content:e.message,type:'conclusion',confidence:.1}];
+    DBG.error(`Fork failed`,`Fork ID: ${nc.id}\nAssumption: "${assumption}"\nError: ${e.message}\nStack: ${e.stack||'n/a'}`);
+    setStatus('Fork error: '+e.message,'error');
+  }
+  nc.loading=false;renderAll();
+}
+
+async function startReasoning(){
+  const q=document.getElementById('q-inp').value.trim();
+  if(!q)return;
+  const prov=getCurrentProvider();
+  if(PROVIDERS[prov].hasKey&&!getKey(prov)&&prov!=='custom'&&prov!=='ollama'){
+    DBG.warn(`No API key for ${PROVIDERS[prov].name}`,`Open ⚙ CONFIG to add your key.\nProvider: ${prov}`);
+    document.getElementById('config-btn').click();return;
+  }
+  const branches=getBranches();
+  if(S.chains.length>0)saveToHistory();
+  S.question=q;S.chains=[];S.nextId=0;S.totalTokens=0;S.bookmarks=[];S.annotations={};S.ratings={};S.tags={};
+  for(let b=0;b<branches;b++){
+    const c={id:S.nextId++,forkFromChain:null,forkFromStepId:null,forkAssumption:b>0?`Branch ${b+1}`:null,steps:[],loading:true};
+    S.chains.push(c);
+  }
+  renderAll();
+  const btn=document.getElementById('reason-btn');
+  btn.textContent='THINKING…';btn.disabled=true;
+  setStatus(`Reasoning via ${PROVIDERS[prov].name} / ${getCurrentModel()}…`);
+  DBG.info(`Starting reasoning session`,`Question: "${q}"\nProvider: ${prov}\nModel: ${getCurrentModel()}\nMode: ${S.mode}\nDepth: ${getDepth()}\nBranches: ${branches}\nTemp: ${getTemp()}`);
+
+  await Promise.all(S.chains.map(async(c,b)=>{
+    let txt='';
+    try{
+      const branchNote=branches>1?` (explore from perspective ${b+1} of ${branches})`:'';
+      txt=await callAPI([{role:'user',content:`Reason through this step by step: ${q}${branchNote}`}],getSysPrompt(getDepth()));
+      const steps=parseSteps(txt);
+      if(!steps?.length){
+        DBG.error('Parse failed — full raw response below',`Model returned:\n${txt}`);
+        throw new Error('Could not parse model response — open ⧡ DEBUG for raw response');
+      }
+      c.steps=steps.map((s,i)=>({...s,id:`c${c.id}_s${i}`}));
+      DBG.success(`Chain ${c.id} completed with ${steps.length} steps`);
+    }catch(e){
+      console.error(e);
+      const rawSnippet=txt?`\n\nRaw model response:\n${txt.slice(0,500)}`:'';
+      c.steps=[{id:`c${c.id}_s0`,title:'Error — check DEBUG panel',content:`${e.message}${rawSnippet}`,type:'conclusion',confidence:.0}];
+      DBG.error(`Chain ${c.id} failed`,`Question: "${q}"\nBranch: ${b+1}/${branches}\nError: ${e.message}\nStack: ${e.stack||'n/a'}\n\nFull raw response:\n${txt||'(empty)'}`);
+      setStatus('Error: '+e.message,'error');
+      toast('API error — open ⧡ DEBUG for details');
+    }
+    c.loading=false;
+  }));
+
+  btn.textContent='REASON →';btn.disabled=false;
+  const totalSteps=S.chains.reduce((n,c)=>n+c.steps.length,0);
+  setStatus(`Done — ${totalSteps} steps across ${S.chains.length} chain(s)`,'ok');
+  DBG.info(`Reasoning session complete`,`Total steps: ${totalSteps}\nChains: ${S.chains.length}\nTokens: ~${S.totalTokens}`);
+  renderAll();
+}
+
+document.getElementById('reason-btn').addEventListener('click',startReasoning);
+document.getElementById('q-inp').addEventListener('keydown',e=>{if(e.key==='Enter')startReasoning();});
+document.getElementById('clear-btn').addEventListener('click',()=>{
+  if(S.chains.length>0)saveToHistory();
+  S.question='';S.chains=[];S.nextId=0;S.totalTokens=0;S.collapsedChains.clear();S.bookmarks=[];S.annotations={};S.ratings={};S.tags={};
+  document.getElementById('q-inp').value='';updateTokens();renderAll();
+  document.getElementById('summary-panel').classList.remove('open');
+  removeCompareOverlay();
+  DBG.info('Session cleared');
+});
+
+function setEx(el){document.getElementById('q-inp').value=el.textContent;document.getElementById('q-inp').focus();}
+
+let currentExportFmt='md';
+function switchExportFmt(fmt){
+  currentExportFmt=fmt;
+  document.querySelectorAll('.export-tab').forEach(t=>t.classList.toggle('active',t.dataset.fmt===fmt));
+  document.getElementById('export-pre').textContent=buildExport(fmt);
+}
+
+function buildExport(fmt){
+  if(fmt==='md')return buildMarkdown();
+  if(fmt==='json')return JSON.stringify({question:S.question,mode:S.mode,provider:getCurrentProvider(),model:getCurrentModel(),chains:S.chains.map(c=>({...c,tag:S.tags[c.id]||null,bookmarkedSteps:S.bookmarks.filter(b=>b.chainId===c.id).map(b=>b.si),annotations:Object.fromEntries(Object.entries(S.annotations).filter(([k])=>k.startsWith(c.id+'_')).map(([k,v])=>[k.split('_')[1],v])),ratings:Object.fromEntries(Object.entries(S.ratings).filter(([k])=>k.startsWith(c.id+'_')).map(([k,v])=>[k.split('_')[1],v]))}))},null,2);
+  if(fmt==='txt'){
+    let t=`NEURON REASONING EXPORT\n${'='.repeat(40)}\nQuestion: ${S.question}\nMode: ${S.mode}\n\n`;
+    S.chains.forEach(c=>{
+      t+=c.forkFromChain===null?`MAIN CHAIN\n${'-'.repeat(20)}\n`:`FORK ${c.id}: "${c.forkAssumption}"\n${'-'.repeat(20)}\n`;
+      c.steps.forEach((s,i)=>{t+=`${i+1}. [${s.type.toUpperCase()}] ${s.title}\n   Confidence: ${Math.round((s.confidence||.8)*100)}%\n   ${s.content}\n\n`;});
+    });
+    return t;
+  }
+  if(fmt==='csv'){
+    let rows=['Chain ID,Fork,Step,Type,Title,Confidence,Content,Rating,Bookmark,Annotation'];
+    S.chains.forEach(c=>{
+      c.steps.forEach((s,i)=>{
+        const rating=getRating(c.id,i);
+        const bm=isBookmarked(c.id,i)?'yes':'no';
+        const ann=(getAnnotation(c.id,i)||'').replace(/"/g,'""');
+        const content=(s.content||'').replace(/"/g,'""');
+        const title=(s.title||'').replace(/"/g,'""');
+        rows.push(`${c.id},${c.forkFromChain!==null?'yes':'no'},${i+1},${s.type},"${title}",${Math.round((s.confidence||.8)*100)}%,"${content}",${rating},${bm},"${ann}"`);
+      });
+    });
+    return rows.join('\n');
+  }
+  return '';
+}
+
+function buildMarkdown(){
+  let md=`# NEURON Reasoning Export\n\n**Question:** ${S.question}\n**Primary Provider:** ${getCurrentProvider()} / ${getCurrentModel()}\n**Mode:** ${S.mode}\n\n---\n\n`;
+  for(const chain of S.chains){
+    const chainProv=chain.aiProvider||getCurrentProvider();
+    const chainModel=chain.aiModel||getCurrentModel();
+    const tag=S.tags[chain.id];
+    if(chain.forkFromChain===null)md+=`## Main Chain\n**AI:** ${chainProv} / ${chainModel}\n\n`;
+    else md+=`## Fork ${chain.id}${tag?` [${tag}]`:''} — "${chain.forkAssumption}"\n**AI:** ${chainProv} / ${chainModel}\n\n`;
+    chain.steps.forEach((s,i)=>{
+      const bm=isBookmarked(chain.id,i)?'★ ':'';
+      const rating=getRating(chain.id,i);
+      const ann=getAnnotation(chain.id,i);
+      md+=`### ${bm}Step ${i+1}: ${s.title}\n`;
+      md+=`**Type:** ${s.type} | **Confidence:** ${Math.round((s.confidence||.8)*100)}%${rating?` | **Rating:** ${rating}/5`:''}${ann?`\n> *Note: ${ann}*`:''}\n\n${s.content}\n\n`;
+    });
+    md+='\n---\n\n';
+  }
+  return md;
+}
+
+document.getElementById('export-btn').addEventListener('click',()=>{
+  currentExportFmt='md';
+  document.querySelectorAll('.export-tab').forEach(t=>t.classList.toggle('active',t.dataset.fmt==='md'));
+  document.getElementById('export-pre').textContent=buildMarkdown();
+  document.getElementById('export-modal').style.display='flex';
+});
+function closeExport(){document.getElementById('export-modal').style.display='none';}
+document.getElementById('copy-export').addEventListener('click',()=>{
+  navigator.clipboard.writeText(document.getElementById('export-pre').textContent);
+  toast('Copied to clipboard');
+});
+document.getElementById('dl-export').addEventListener('click',()=>{
+  const fmt=currentExportFmt;
+  const ext=fmt==='md'?'md':fmt==='json'?'json':fmt==='csv'?'csv':'txt';
+  const blob=new Blob([buildExport(fmt)],{type:'text/plain'});
+  const a=Object.assign(document.createElement('a'),{href:URL.createObjectURL(blob),download:`neuron-${Date.now()}.${ext}`});
+  a.click();URL.revokeObjectURL(a.href);
+});
+
+function toggleMinimap(){
+  S.minimapVisible=!S.minimapVisible;
+  document.getElementById('minimap').style.display=S.minimapVisible?'':'none';
+  if(S.minimapVisible)updateMinimap();
+}
+document.getElementById('minimap-btn').addEventListener('click',toggleMinimap);
+function updateMinimap(){
+  if(!S.minimapVisible)return;
+  const canvas=document.getElementById('mm-canvas');
+  const ctx=canvas.getContext('2d');
+  const root=document.getElementById('graph-root');
+  const W=160,H=100;
+  canvas.width=W;canvas.height=H;
+  ctx.clearRect(0,0,W,H);
+  const rw=root.offsetWidth||600,rh=root.offsetHeight||400;
+  const scX=W/rw,scY=H/rh;
+  ctx.fillStyle='rgba(0,245,255,0.15)';
+  document.querySelectorAll('.node').forEach(n=>{
+    const l=parseInt(n.style.left)||0,t=parseInt(n.style.top)||0;
+    ctx.fillRect(l*scX,t*scY,CW*scX,50*scY);
+  });
+  const gw=document.getElementById('graph-wrap');
+  ctx.strokeStyle='rgba(0,245,255,0.5)';ctx.lineWidth=1;
+  ctx.strokeRect(gw.scrollLeft*scX,gw.scrollTop*scY,(gw.clientWidth||300)*scX,(gw.clientHeight||300)*scY);
+}
+document.getElementById('graph-wrap').addEventListener('scroll',updateMinimap);
+
+document.addEventListener('keydown',e=>{
+  if(e.ctrlKey||e.metaKey){
+    if(e.key==='k'){e.preventDefault();document.getElementById('q-inp').focus();}
+    if(e.key==='f'){e.preventDefault();document.getElementById('search-btn').click();}
+    if(e.key==='m'){e.preventDefault();toggleMinimap();}
+    if(e.key==='e'&&S.chains.length){e.preventDefault();document.getElementById('export-btn').click();}
+    if(e.key==='d'){e.preventDefault();document.getElementById('debug-btn').click();}
+  }
+  if(e.key==='Escape'){
+    document.getElementById('fork-modal').style.display='none';
+    document.getElementById('config-modal').style.display='none';
+    document.getElementById('export-modal').style.display='none';
+    clearSearch();
+    if(S.compareMode){S.compareMode=false;removeCompareOverlay();S.compareSelected=[];document.getElementById('compare-btn').textContent='⊞ COMPARE';document.getElementById('compare-btn').style.color='';document.getElementById('compare-btn').style.borderColor='';renderAll();}
+    noteOpenKey=null;
+  }
+});
+
+buildPresets();
+applyTheme('void');
+updateProviderModels();
+loadHistory();
+renderAll();
+DBG.info('NEURON v3 initialized',`Browser: ${navigator.userAgent}\nTime: ${new Date().toISOString()}`);
+
+setTimeout(()=>{
+  if(!localStorage.getItem('neuron_hint_shown')){
+    toast('Tip: Ctrl+K focus · Ctrl+F search · Ctrl+D debug · Ctrl+E export');
+    localStorage.setItem('neuron_hint_shown','1');
+  }
+},1200);
+</script>
+</body>
+</html>
